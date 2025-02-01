@@ -1,6 +1,6 @@
 local mod = {
 	id = "truelch_RuleBreakers",
-	name = "Hell Breachers",
+	name = "Rule Breakers",
 	icon = "img/mod_icon.png",
 	version = "0.0.0",
 	modApiVersion = "2.9.2",

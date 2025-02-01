@@ -77,6 +77,23 @@ local function computeThornDamage(p1, se)
 
 end
 
+
+--Wait, the following doesn't give me a SkillEffect
+--[[
+local function EVENT_onSkillEnd(mission, pawn, weaponId, p1, p2, skillEffect)
+	computeThornDamage(p1, skillEffect)
+end
+
+local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3, skillEffect)
+	computeThornDamage(p1, skillEffect)
+end
+
+modapiext.events.onSkillEnd:subscribe(EVENT_onSkillEnd)
+modapiext.events.onFinalEffectEnd:subscribe(EVENT_onFinalEffectEnd)
+]]
+
+--No, this happens during get skill effect. I want to way that the skill is effectively passed to the game!
+--Or maybe not
 local function EVENT_onSkillBuild(mission, pawn, weaponId, p1, p2, skillEffect)
 	computeThornDamage(p1, skillEffect)
 end
