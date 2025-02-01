@@ -5,7 +5,6 @@ local mod = modApi:getCurrentMod()
 --local mechDiversYellow = modApi:getPaletteImageOffset("truelch_MechDiversYellow")
 
 --to do for both sawblade and upgraded saw blade:
---[[
 local trait = require(scriptPath.."/libs/trait") --unnecessary?
 trait:add{
     pawnType = "truelch_Sawblade",
@@ -14,7 +13,14 @@ trait:add{
     desc_title = "Thorns",
     desc_text = "Any damage caused during player's turn to a Building will be redirected to any adjacent Emancipator Mech."
 }
-]]
+
+trait:add{
+    pawnType = "truelch_Sawblade_A",
+    icon = "img/combat/icons/icon_protecc.png",
+    icon_offset = Point(0, 0),
+    desc_title = "Thorns",
+    desc_text = "Any damage caused during player's turn to a Building will be redirected to any adjacent Emancipator Mech."
+}
 
 truelch_Sawblade = Pawn:new{
 	Name = "Sawblade",

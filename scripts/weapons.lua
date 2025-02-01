@@ -32,14 +32,9 @@ local function missionData()
 	---> 1: sawblade is dead
 	---> <sawblade's id>: sawblade is alive!
 	if mission.truelch_RuleBreakers.sawStatus == nil then
+		LOG("------------------- sawStatus table initialized")
 		mission.truelch_RuleBreakers.sawStatus = {}
 	end
-
-	--[[
-	if mission.truelch_RuleBreakers.lastLauncher == nil then
-		mission.truelch_RuleBreakers.lastLauncher
-	end
-	]]
 
 	return mission.truelch_RuleBreakers
 end
@@ -52,7 +47,7 @@ local function isVarNil(msg, var)
 	end
 end
 
---Game:GetPower()
+
 
 
 -------------------------
@@ -82,8 +77,8 @@ local function debugSawStatus()
 	end
 end
 
-local function addSawBlade(pawn)
-	LOG("addSawBlade")
+function truelch_addSawBlade(pawn)
+	LOG("truelch_addSawBlade")
 	if pawn == nil then
 		LOG("pawn == nil -> return")
 		return
@@ -251,6 +246,9 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 				ret:AddDamage(spawnSawblade)
 			else
 				ret:AddDamage(spaceDamage)
+				--Set status: sawblade destroyed (since it's not actually deployed)
+				ret:AddScript("missionData().sawStatus[Pawn:GetId()] = 1")
+				--TODO: play anim?
 			end
 		end
 
@@ -258,17 +256,37 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 	end
 
 	--Doesn't seem to work?
-	--ret:AddScript("missionData().lastLauncher = Pawn")
+	--ret:AddScript("missionData().lastLauncher = Pawn:GetId()")
 
 	return ret
 end
 
-local function DistFromLine(point, lineP1, lineP2)
-	return 0 --tmp
+
+-- Fonction pour calculer la distance entre un point (px, py) et une ligne définie par deux points (x1, y1) et (x2, y2)
+local function distancePointLigne(px, py, x1, y1, x2, y2)
+	-- Calcul des coefficients de la ligne
+	local A = y2 - y1
+	local B = x1 - x2
+	local C = x2 * y1 - x1 * y2
+
+	-- Calcul de la distance
+	local distance = math.abs(A * px + B * py + C) / math.sqrt(A^2 + B^2)
+	return distance
 end
 
-local function GetLinePoints(p1, p2)
-	LOGF("GetLinePoints(p1: %s, p2: %s)", p1:GetString(), p2:GetString())
+--[[
+-- Exemple d'utilisation
+local px, py = 3, 4 -- Coordonnées du point
+local x1, y1 = 1, 1 -- Coordonnées du premier point de la ligne
+local x2, y2 = 5, 1 -- Coordonnées du deuxième point de la ligne
+
+local dist = distancePointLigne(px, py, x1, y1, x2, y2)
+LOG("La distance entre le point et la ligne est: " .. dist)
+]]
+
+
+local function getLinePoints(p1, p2)
+	LOGF("getLinePoints(p1: %s, p2: %s)", p1:GetString(), p2:GetString())
 	local linePoints = {}
 
 	if p1.x == p2.x or p1.y == p2.y then
@@ -287,16 +305,14 @@ local function GetLinePoints(p1, p2)
 		local jMin = math.min(p1.y, p2.y)
 		local jMax = math.max(p1.y, p2.y)
 
-		--Line params
-		local slope = (jMax - jMin) / (iMax - iMin)
-		LOG("slope: "..tostring(slope))
-
 		LOGF("iMin: %s, iMax: %s, jMin: %s, jMax: %s", tostring(iMin), tostring(iMax), tostring(jMin), tostring(jMax))
 
 		for j = jMin, jMax do
 			for i = iMin, iMax do
 				local curr = Point(i, j)
-				local dist = DistFromLine(curr, p1, p2)
+				LOG(" ----------- curr: "..curr:GetString())
+				--local dist = DistFromLine(curr, p1, p2, iMin, iMax, jMin, jMax)
+				local dist = distancePointLigne(curr.x, curr.y, p1.x, p1.y, p2.x, p2.y)
 				if dist <= 1 and curr ~= p1 and curr ~= p2 then
 					LOG("---------- added: "..curr:GetString())
 					table.insert(linePoints, curr)
@@ -317,14 +333,19 @@ function truelch_SawbladeLauncher:ReturnSawblade(p1, p2)
 	ret:AddArtillery(p2, returnProj, self.ShotUpArt, NO_DELAY)
 
 	--Line calculation (TODO)
-	local line = GetLinePoints(p1, p2)
+	local line = getLinePoints(p1, p2)
 	for _, point in ipairs(line) do
 		local damage = SpaceDamage(point, self.ReturnDamage)
 		ret:AddDamage(damage)
 	end
 
+	--Destroy sawblade
+	local killSawblade = SpaceDamage(p2, DAMAGE_DEATH)
+	--Need to do the "safe" damage to not damage terrain
+	ret:AddDamage(killSawblade)
+
 	--Add sawblade
-	ret:AddScript("addSawBlade(Pawn)")
+	ret:AddScript("truelch_addSawBlade(Pawn)")
 
 	return ret
 end
@@ -332,11 +353,10 @@ end
 function truelch_SawbladeLauncher:RebuildSawblade(p1, p2)
 	local ret = SkillEffect()
 
-	ret:AddScript("addSawBlade(Pawn)")
+	ret:AddScript("truelch_addSawBlade(Pawn)")
 
 	return ret
 end
-
 
 function truelch_SawbladeLauncher:GetSkillEffect(p1, p2)
 	local ret = SkillEffect() --tmp?
@@ -391,7 +411,7 @@ local function EVENT_onMissionStarted(mission)
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_B") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_AB") then --this should be the only one required but it didn't work for the base weapon
 			--LOG(" -----> "..mech:GetMechName().." is equipped with a Sawblade launcher")
-			addSawBlade(mech)
+			truelch_addSawBlade(mech)
 		else
 			--LOG(" -----> not equipped with sawblade launcher")
 		end
@@ -437,19 +457,9 @@ local function EVENT_onPawnTracked(mission, pawn)
 		return
 	end
 
-	--local launcher = missionData().lastLauncher
-	local launcherId = Board:GetPawn(missionData().lastLauncher)
-	--[[
-	if launcher ~= nil then
-		LOGF("------------ last launching: %s, id: %s", launcher:GetMechName(), tostring(launcher:GetId()))
-	else
-		LOG("------------ launcher is nil!")
-	end
-	]]
-
-	if isSawbladePawn(pawn) then
-		--missionData().sawStatus[launcher:GetId()] = pawn:GetId()
-		missionData().sawStatus[launcher] = pawn:GetId()
+	if isSawbladePawn(pawn) and missionData().lastLauncher ~= nil then
+		local launcherId = missionData().lastLauncher
+		missionData().sawStatus[launcherId] = pawn:GetId()
 	end
 end
 
@@ -457,3 +467,97 @@ modApi.events.onMissionStart:subscribe(EVENT_onMissionStarted)
 modapiext.events.onPawnKilled:subscribe(EVENT_onPawnKilled)
 modapiext.events.onSkillEnd:subscribe(EVENT_onSkillEnd)
 modapiext.events.onPawnTracked:subscribe(EVENT_onPawnTracked)
+
+
+-------------------
+--- Grid Shield ---
+-------------------
+
+--"advanced/weapons/Support_GridDefense.png"
+--"advanced/weapons/Support_TC_GridAtk.png"
+
+truelch_GridDischarge = Skill:new{
+	--Infos
+	Name = "Explosive Shield",
+	Description = "Deal damage equal to current grid power to an adjacent target.",
+	Class = "Brute",
+	Icon = "advanced/weapons/Support_GridDefense.png",
+
+	--Shop
+	Rarity = 1,
+	PowerCost = 0,
+	
+	Upgrades = 2,
+	UpgradeCost = { 1, 1 },
+
+	--Gameplay
+	--Damage = "Test?",
+	Limited = 1,
+
+	--Art
+	--ProjectileArt = "effects/shot_pierce",
+	--ShotUpArt = "advanced/effects/shotup_deploybomb.png",
+
+	--Tip image
+	TipImage = {
+		Unit       = Point(2, 2),
+		Building   = Point(2, 2),
+		Enemy      = Point(2, 1),
+		Target     = Point(2, 1),
+		CustomPawn = "truelch_GridMech"
+	}
+}
+
+modApi:addWeaponDrop("truelch_GridDischarge")
+
+Weapon_Texts.truelch_GridDischarge_Upgrade1 = "+1 Use"
+Weapon_Texts.truelch_GridDischarge_Upgrade2 = "+1 Use"
+
+
+truelch_GridDischarge_A = truelch_GridDischarge:new{
+	UpgradeDescription = "Increases uses per battle by one.",
+	Limited = 2,
+}
+
+truelch_GridDischarge_B = truelch_GridDischarge:new{
+	UpgradeDescription = "Increases uses per battle by one.",
+	Limited = 2,
+}
+
+truelch_GridDischarge_AB = truelch_GridDischarge:new{
+	Limited = 3,
+}
+
+function truelch_GridDischarge:GetTargetArea(point)
+	local ret = PointList()
+
+	for dir = DIR_START, DIR_END do
+		ret:push_back(point + DIR_VECTORS[dir])
+	end
+	
+	return ret
+end
+
+function truelch_GridDischarge:GetSkillEffect(p1, p2)
+	local ret = SkillEffect()	
+
+	--https://github.com/search?q=repo%3Aitb-community%2Fmemedit%20power&type=code
+	--[[
+	local power = Game:GetPower()
+	local maxPower = power:GetMax()
+	local currPower = power:GetValue()
+	LOGF("------------------- currPower: %s / maxPower: %s", tostring(currPower), tostring(maxPower))
+	]]
+
+	local dmg = 2
+	if Game ~= nil then
+		dmg = Game:GetPower():GetValue()
+	end
+
+	local damage = SpaceDamage(p2, dmg)
+
+	ret:AddMelee(p1, damage)
+
+	return ret
+
+end
