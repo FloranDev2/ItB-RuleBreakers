@@ -90,11 +90,12 @@ function Move:GetTargetArea(p, ...)
 
 		LOG("------- moveSpeed: "..tostring(moveSpeed))
 
-		local iMin = math.max(0, p.x)
-		local iMax = math.min(7, p.x)
+		--[[
+		local iMin = math.max(0, p.x - moveSpeed)
+		local iMax = math.min(7, p.x + moveSpeed)
 
-		local jMin = math.max(0, p.y)
-		local jMax = math.min(7, p.y)
+		local jMin = math.max(0, p.y - moveSpeed)
+		local jMax = math.min(7, p.y + moveSpeed)
 
 		--LOGF("iMin: %s, iMax: %s, jMin: %s, jMax: %s", tostring(iMin), tostring(iMax), tostring(jMin), tostring(jMax))
 
@@ -109,6 +110,17 @@ function Move:GetTargetArea(p, ...)
 				end
 			end
 		end
+		]]
+
+		--Test
+		for j = 0, 7 do
+			for i = 0, 7 do
+				local curr = Point(i, j)
+				if Board:IsBuilding(curr) then
+					ret:push_back(curr)
+				end
+			end
+		end
 
 		return ret
 	end
@@ -116,37 +128,16 @@ function Move:GetTargetArea(p, ...)
 	return oldMove(self, p, ...)
 end
 
---[[
+
 local oldMove = Move.GetSkillEffect
 function Move:GetSkillEffect(p1, p2, ...)
 	local mover = Board:GetPawn(p1)
-	if mover and (mover:GetType() == "truelch_BurrowerMech") then
+	if mover and mover:GetType() == "truelch_GridMech" then
 		local ret = SkillEffect()
-		local pawnId = mover:GetId()
-
-		-- just preview move.
-		-- ret:AddScript(string.format("Board:GetPawn(%s):SetSpace(Point(-1, -1))", pawnId))
-		if not Board:IsTerrain(p1, TERRAIN_WATER) and not Board:IsTerrain(p2, TERRAIN_WATER) and p1:Manhattan(p2) > 1 then
-		--it's annoying to go through the whole burrowing animation for one tile so we force a normal Move
-		--could probably check whether it's possible to move to p2 without burrowing but this helps a little
-			ret:AddBurrow(Board:GetPath(p1, p2, PATH_FLYER), NO_DELAY)
-			ret:AddSound("/enemy/shared/crawl_out")
-			ret:AddDelay(0.7)	--burrowing anim duration
-			local path = extract_table(Board:GetPath(p1, p2, PATH_FLYER))
-			local dist = #path - 1
-			for i = 1, #path do
-				local p = path[i]
-				ret:AddBounce(p, -2)
-				ret:AddDelay(.32 / dist)
-			end
-		else
-			ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
-		end
-
-
+		ret:AddTeleport(p1, p2, NO_DELAY)
+		ret:AddSound("/weapons/force_swap")
 		return ret
 	end
 
 	return oldMove(self, p1, p2, ...)
 end
-]]
