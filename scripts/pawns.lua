@@ -69,7 +69,7 @@ truelch_DislocationMech = Pawn:new {
 	MoveSpeed = 3,
 	Image = "MechArt",
 	ImageOffset = 9,
-	SkillList = { "Ranged_Arachnoid", "Support_Refrigerate" },
+	SkillList = { "truelch_RiftInducer", "Science_TC_SwapOther" },
 	SoundLocation = "/enemy/burrower_2/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
@@ -82,41 +82,17 @@ local oldMove = Move.GetTargetArea
 function Move:GetTargetArea(p, ...)
 	local mover = Board:GetPawn(p)
 	if mover and mover:GetType() == "truelch_GridMech" then
-		LOG("------- Grid Mech special move")
+		--LOG("------- Grid Mech special move")
 
 		local ret = PointList()
 
 		local moveSpeed = mover:GetMoveSpeed()
 
-		LOG("------- moveSpeed: "..tostring(moveSpeed))
-
-		--[[
-		local iMin = math.max(0, p.x - moveSpeed)
-		local iMax = math.min(7, p.x + moveSpeed)
-
-		local jMin = math.max(0, p.y - moveSpeed)
-		local jMax = math.min(7, p.y + moveSpeed)
-
-		--LOGF("iMin: %s, iMax: %s, jMin: %s, jMax: %s", tostring(iMin), tostring(iMax), tostring(jMin), tostring(jMax))
-
-		--lazy approach
-		for j = jMin, jMax do
-			for i = iMin, iMax do
-				local curr = p + Point(i, j)
-				--LOG("curr: "..curr:GetString())
-				if p:Manhattan(curr) <= moveSpeed and Board:IsBuilding(curr) then
-					LOG("------- added: "..curr:GetString())
-					ret:push_back(curr)
-				end
-			end
-		end
-		]]
-
 		--Test
 		for j = 0, 7 do
 			for i = 0, 7 do
 				local curr = Point(i, j)
-				if Board:IsBuilding(curr) then
+				if Board:IsBuilding(curr) and p1:Manhattan(curr) <= moveSpeed then
 					ret:push_back(curr)
 				end
 			end

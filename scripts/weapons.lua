@@ -539,7 +539,7 @@ function truelch_GridDischarge:GetTargetArea(point)
 end
 
 function truelch_GridDischarge:GetSkillEffect(p1, p2)
-	local ret = SkillEffect()	
+	local ret = SkillEffect()
 
 	--https://github.com/search?q=repo%3Aitb-community%2Fmemedit%20power&type=code
 	--[[
@@ -560,4 +560,126 @@ function truelch_GridDischarge:GetSkillEffect(p1, p2)
 
 	return ret
 
+end
+
+
+
+--------------------
+--- Rift Inducer ---
+--------------------
+
+truelch_RiftInducer = Skill:new{
+	--Infos
+	Name = "Rift Inducer",
+	Description = "Shoot a projectile opening a spatial rift at the target tile.",
+	Class = "Ranged",
+	Icon = "advanced/weapons/Science_TC_SwapOther.png",
+
+	--Shop
+	Rarity = 1,
+	PowerCost = 0,
+	
+	Upgrades = 2,
+	UpgradeCost = { 1, 2 },
+
+	--Gameplay
+	TwoClick = true,
+	Damage = 1,
+	SecondTargetRange = 1,
+	Confuse = false,
+
+	--Art
+	ShotUpArt = "advanced/effects/shotup_deploybomb.png",
+	LaunchSound = "/weapons/force_swap",
+
+	--Tip image
+	TipImage = {
+		Unit   = Point(2, 3),
+		Enemy  = Point(2, 1),
+		Enemy2 = Point(1, 1),
+		Target = Point(2, 1),
+		Second_Click = Point(2,1),
+		CustomPawn = "truelch_DislocationMech",
+		--Queued1 = Point(2,2), --didn't know this was a thing
+	}
+}
+
+modApi:addWeaponDrop("truelch_RiftInducer")
+
+Weapon_Texts.truelch_RiftInducer_Upgrade1 = "+1 Range"
+Weapon_Texts.truelch_RiftInducer_Upgrade2 = "Confusion"
+
+truelch_RiftInducer_A = truelch_RiftInducer:new{
+	UpgradeDescription = "Swap range increased by one.",
+	SecondTargetRange = 2,
+}
+
+truelch_RiftInducerB = truelch_RiftInducer:new{
+	UpgradeDescription = "Confuse vek swapped by this weapon, flipping their attack direction.",
+	Confuse = true,
+}
+
+truelch_RiftInducer_AB = truelch_RiftInducer:new{	
+	SecondTargetRange = 2,
+	Confuse = true,
+}
+
+function truelch_RiftInducer:GetTargetArea(point)
+	local ret = PointList()
+
+	for dir = DIR_START, DIR_END do
+		for i = 2, 7 do
+			local curr = point + DIR_VECTORS[dir] * i
+			if Board:IsValid(curr) then
+				ret:push_back(curr)
+			end
+		end
+	end
+	
+	return ret
+end
+
+function truelch_RiftInducer:GetSkillEffect(p1, p2)
+	local ret = SkillEffect()
+
+	local damage = SpaceDamage(p2, self.Damage)
+	if self.Confuse then
+		damage = SpaceDamage(p2, self.Damage, DIR_FLIP)
+	end
+
+	--From Science_TC_SwapOther
+	if not Board:IsPawnSpace(p2) then 
+		damage.sImageMark = "advanced/combat/icons/icon_x_glow.png"
+	elseif Board:GetPawn(p2):IsGuarding() then
+		damage.sImageMark = "combat/icons/icon_guard_glow.png"
+	else
+		damage.sImageMark = "advanced/combat/icons/icon_teleport_glow.png"
+	end
+
+	ret:AddArtillery(damage, self.ShotUpArt)
+
+	return ret
+end
+
+function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
+	local ret = PointList()
+	
+	for dir = DIR_START, DIR_END do
+		for i = 1, self.SecondTargetRange do
+			local curr = p2 + DIR_VECTORS[dir] * i
+			if Board:IsValid(curr) then
+				ret:push_back(curr)
+			end
+		end
+	end
+
+	return ret
+end
+
+function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
+	local ret = self:GetSkillEffect(p1, p2)
+
+	
+	
+	return ret
 end
