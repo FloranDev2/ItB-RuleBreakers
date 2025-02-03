@@ -471,7 +471,7 @@ truelch_GridShield = Skill:new{
 	Name = "Grid Shield",
 	Description = "Teleport to a city within move range.\nShield the unit and the building.",
 	Class = "Science",
-	Icon = "/weapons/truelch_grid_shield.png",
+	Icon = "weapons/truelch_grid_shield.png",
 
 	--Shop
 	Rarity = 1,
@@ -482,13 +482,13 @@ truelch_GridShield = Skill:new{
 
 	--Gameplay
 	AutoShield = false, --only for tip image
-	PushAdjacent = true,
+	PushAdjacent = false,
 
 	--Tip image
 	TipImage = {
 		Unit       = Point(2, 3),
 		Building   = Point(2, 2),
-		Building   = Point(2, 3),
+		Building2  = Point(2, 3),
 		Enemy      = Point(2, 1),
 		Target     = Point(2, 2),
 		CustomPawn = "truelch_GridMech"
@@ -499,7 +499,6 @@ modApi:addWeaponDrop("truelch_GridShield")
 
 Weapon_Texts.truelch_GridShield_Upgrade1 = "Auto-shield"
 Weapon_Texts.truelch_GridShield_Upgrade2 = "Explosive Shield"
-
 
 truelch_GridShield_A = truelch_GridShield:new{
 	UpgradeDescription = "Automatically gain a shield at round start.",
@@ -538,6 +537,14 @@ end
 
 function truelch_GridShield:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
+
+	if Board:IsTipImage() then
+		--ret:AddScript(string.format([[Board:AddAlert(%s, "Auto-Shield")]], p2))
+		Board:AddAlert(p1, "Auto-Shield")
+		local autoShield = SpaceDamage(p1, 0)
+		shield.iShield = 1
+		ret:AddDamage(shield)
+	end
 
 	ret:AddTeleport(p1, p2, FULL_DELAY)
 
@@ -581,7 +588,7 @@ truelch_GridDischarge = Skill:new{
 	Name = "Grid Discharge",
 	Description = "Deal damage equal to current grid power to an adjacent target.",
 	Class = "Science",
-	Icon = "weapons/truelch_grid_discharge",
+	Icon = "weapons/truelch_grid_discharge.png",
 
 	--Shop
 	Rarity = 1,
@@ -591,6 +598,7 @@ truelch_GridDischarge = Skill:new{
 	UpgradeCost = { 1, 1 },
 
 	--Gameplay
+	Limited = 1,
 
 	--Art
 	Anim = "",
@@ -607,8 +615,22 @@ truelch_GridDischarge = Skill:new{
 
 modApi:addWeaponDrop("truelch_GridDischarge")
 
-Weapon_Texts.truelch_GridDischarge_Upgrade1 = "Auto-shield"
-Weapon_Texts.truelch_GridDischarge_Upgrade2 = "Explosive Shield"
+Weapon_Texts.truelch_GridDischarge_Upgrade1 = "+1 Use"
+Weapon_Texts.truelch_GridDischarge_Upgrade2 = "+1 Use"
+
+truelch_GridDischarge_A = truelch_GridDischarge:new{
+	UpgradeDescription = "Increases uses per battle by one.",
+	Limited = 2,
+}
+
+truelch_GridDischarge_B = truelch_GridDischarge:new{
+	UpgradeDescription = "Increases uses per battle by one.",
+	Limited = 2,
+}
+
+truelch_GridDischarge_AB = truelch_GridDischarge:new{
+	Limited = 3,
+}
 
 function truelch_GridDischarge:GetTargetArea(point)
 	local ret = PointList()
@@ -655,7 +677,7 @@ truelch_RiftInducer = Skill:new{
 	Name = "Rift Inducer",
 	Description = "Shoot a projectile opening a spatial rift at the target tile.",
 	Class = "Ranged",
-	Icon = "/weapons/truelch_rift_inducer.png",
+	Icon = "weapons/truelch_rift_inducer.png",
 
 	--Shop
 	Rarity = 1,
@@ -762,7 +784,6 @@ function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
 	--local ret = self:GetSkillEffect(p1, p2)	
 	local ret = SkillEffect()
 
-	--[[
 	local first_damage = SpaceDamage(p2, self.Damage)
 	if self.Confuse then
 		first_damage = SpaceDamage(p2, self.Damage, DIR_FLIP)
@@ -783,7 +804,6 @@ function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
 	if delay ~= FULL_DELAY then
 		ret:AddTeleport(p3, p2, FULL_DELAY)
 	end
-	]]
 
 	--SWAP TILES!!!
 	local tile2 = Board:GetTerrain(p2)
