@@ -8,10 +8,10 @@ local mod = modApi:getCurrentMod()
 local trait = require(scriptPath.."/libs/trait") --unnecessary?
 trait:add{
     pawnType = "truelch_DislocationMech",
-    icon = "img/combat/icons/icon_protecc.png",
+    icon = "img/combat/icons/icon_grid_mech_trait.png",
     icon_offset = Point(0, 0),
     desc_title = "Grid Protector",
-    desc_text = "Can teleport to Buildings in move range."
+    desc_text = "Instead of moving, teleports to a building in move range. While the Grid Mech is alive, the building is immune to damage."
 }
 
 
@@ -46,15 +46,16 @@ truelch_GridMech = Pawn:new {
 	MoveSpeed = 4,
 	Image = "MechTritube",
 	ImageOffset = 9,
-	SkillList = { "truelch_GridDischarge" },
+	SkillList = { "truelch_GridShield", "truelch_GridDischarge" },
 	SoundLocation = "/enemy/bouncer_2/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
 	Massive = true,
 	Flying = true,
 	IgnoreSmoke = true,
-	WebImmune = true,
+	WebImmune = true, --I think you need to do it by script
 	Pushable = false, --maybe?
+	--Corpse = false, --test?
 }
 
 
@@ -69,12 +70,11 @@ truelch_DislocationMech = Pawn:new {
 	MoveSpeed = 3,
 	Image = "MechArt",
 	ImageOffset = 9,
-	SkillList = { "truelch_RiftInducer", "Science_TC_SwapOther" },
+	SkillList = { "truelch_RiftInducer" },
 	SoundLocation = "/enemy/burrower_2/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
 	Massive = true,
-	--Corpse = false, --test?
 }
 
 --I didn't added that at first, but I might need that in the end
@@ -92,7 +92,7 @@ function Move:GetTargetArea(p, ...)
 		for j = 0, 7 do
 			for i = 0, 7 do
 				local curr = Point(i, j)
-				if Board:IsBuilding(curr) and p1:Manhattan(curr) <= moveSpeed then
+				if Board:IsBuilding(curr) and p:Manhattan(curr) <= moveSpeed and p ~= curr then
 					ret:push_back(curr)
 				end
 			end

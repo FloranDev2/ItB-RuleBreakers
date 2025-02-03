@@ -105,7 +105,7 @@ truelch_SawbladeLauncher = Skill:new{
 	Name = "Sawblade Launcher",
 	Description = "Launch a sawblade, dealing 2 damage in its path.",
 	Class = "Brute",
-	Icon = "weapons/prime_punchmech.png",
+	Icon = "weapons/truelch_sawblade_launcher.png",
 
 	--Shop
 	Rarity = 1,
@@ -123,7 +123,7 @@ truelch_SawbladeLauncher = Skill:new{
 	ReturnDamage = 3,
 	ReturnSelfDamage = 1,
 
-	OnKill = "Test",
+	OnKill = "Spawn Sawblade",
 
 	--Art
 	ProjectileArt = "effects/shot_pierce",
@@ -392,24 +392,17 @@ function truelch_SawbladeLauncher:GetSkillEffect(p1, p2)
 
 end
 
-
---------------
---- Events ---
---------------
-
 local function EVENT_onMissionStarted(mission)
-	--LOG("EVENT_onMissionStarted")
 	for i = 0, 2 do
 		local mech = Board:GetPawn(i)
-
-		--LOGF("[%s] mech: %s", tostring(i), mech:GetMechName())
 		
 		--Returns true if the pawn has powered a weapon of type weapon or a less powered variant of it. false otherwise.
 		--just using mech:IsWeaponPowered("truelch_SawbladeLauncher_AB") did NOT work with base version, unlike what documentation described.
-		if mech:IsWeaponPowered("truelch_SawbladeLauncher") or
+		if mech ~= nil and
+				(mech:IsWeaponPowered("truelch_SawbladeLauncher") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_A") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_B") or
-				mech:IsWeaponPowered("truelch_SawbladeLauncher_AB") then --this should be the only one required but it didn't work for the base weapon
+				mech:IsWeaponPowered("truelch_SawbladeLauncher_AB")) then --this should be the only one required but it didn't work for the base weapon
 			--LOG(" -----> "..mech:GetMechName().." is equipped with a Sawblade launcher")
 			truelch_addSawBlade(mech)
 		else
@@ -473,15 +466,12 @@ modapiext.events.onPawnTracked:subscribe(EVENT_onPawnTracked)
 --- Grid Shield ---
 -------------------
 
---"advanced/weapons/Support_GridDefense.png"
---"advanced/weapons/Support_TC_GridAtk.png"
-
-truelch_GridDischarge = Skill:new{
+truelch_GridShield = Skill:new{
 	--Infos
-	Name = "Explosive Shield",
-	Description = "Deal damage equal to current grid power to an adjacent target.",
-	Class = "Brute",
-	Icon = "advanced/weapons/Support_GridDefense.png",
+	Name = "Grid Shield",
+	Description = "Teleport to a city within move range.\nShield the unit and the building.",
+	Class = "Science",
+	Icon = "/weapons/truelch_grid_shield.png",
 
 	--Shop
 	Rarity = 1,
@@ -491,12 +481,119 @@ truelch_GridDischarge = Skill:new{
 	UpgradeCost = { 1, 1 },
 
 	--Gameplay
-	--Damage = "Test?",
-	Limited = 1,
+	AutoShield = false, --only for tip image
+	PushAdjacent = true,
+
+	--Tip image
+	TipImage = {
+		Unit       = Point(2, 3),
+		Building   = Point(2, 2),
+		Building   = Point(2, 3),
+		Enemy      = Point(2, 1),
+		Target     = Point(2, 2),
+		CustomPawn = "truelch_GridMech"
+	}
+}
+
+modApi:addWeaponDrop("truelch_GridShield")
+
+Weapon_Texts.truelch_GridShield_Upgrade1 = "Auto-shield"
+Weapon_Texts.truelch_GridShield_Upgrade2 = "Explosive Shield"
+
+
+truelch_GridShield_A = truelch_GridShield:new{
+	UpgradeDescription = "Automatically gain a shield at round start.",
+	AutoShield = true,
+}
+
+truelch_GridShield_B = truelch_GridShield:new{
+	UpgradeDescription = "Deploying the shield pushes adjacent unit",
+	PushAdjacent = true,
+}
+
+truelch_GridShield_AB = truelch_GridShield:new{
+	AutoShield = true,
+	PushAdjacent = true,
+}
+
+function truelch_GridShield:GetTargetArea(point)
+	local ret = PointList()
+
+	local moveSpeed = Pawn:GetMoveSpeed()
+
+	--can target self?
+
+	--yes, I'm lazy
+	for j = 0, 7 do
+		for i = 0, 7 do
+			local curr = Point(i, j)
+			if point:Manhattan(curr) <= moveSpeed then
+				ret:push_back(curr)
+			end
+		end
+	end
+	
+	return ret
+end
+
+function truelch_GridShield:GetSkillEffect(p1, p2)
+	local ret = SkillEffect()
+
+	ret:AddTeleport(p1, p2, FULL_DELAY)
+
+	local shield = SpaceDamage(p2, 0)
+	shield.iShield = 1
+	ret:AddDamage(shield)
+
+	if self.PushAdjacent then
+		for dir = DIR_START, DIR_END do
+			local curr = p2 + DIR_VECTORS[dir]
+			local push = SpaceDamage(curr, 0)
+			push.sAnimation = "airpush_"..dir
+			push.iPush = dir
+			ret:AddDamage(push)
+		end
+	end
+
+	return ret
+end
+
+local function EVENT_onNextTurn(mission)
+	for i = 0, 2 do
+		local mech = Board:GetPawn(i)
+		--only if the mech is on a building?
+		if mech ~= nil and (mech:IsWeaponPowered("truelch_GridShield_A") or mech:IsWeaponPowered("truelch_GridShield_AB")) then
+			mech:SetShield(true)
+			Board:AddAlert(mech:GetSpace(), "Auto-Shield")
+		end
+	end
+end
+
+modApi.events.onNextTurn:subscribe(EVENT_onNextTurn)
+
+
+----------------------
+--- Grid Discharge ---
+----------------------
+
+truelch_GridDischarge = Skill:new{
+	--Infos
+	Name = "Grid Discharge",
+	Description = "Deal damage equal to current grid power to an adjacent target.",
+	Class = "Science",
+	Icon = "weapons/truelch_grid_discharge",
+
+	--Shop
+	Rarity = 1,
+	PowerCost = 0,
+	
+	Upgrades = 2,
+	UpgradeCost = { 1, 1 },
+
+	--Gameplay
 
 	--Art
-	--ProjectileArt = "effects/shot_pierce",
-	--ShotUpArt = "advanced/effects/shotup_deploybomb.png",
+	Anim = "",
 
 	--Tip image
 	TipImage = {
@@ -510,29 +607,24 @@ truelch_GridDischarge = Skill:new{
 
 modApi:addWeaponDrop("truelch_GridDischarge")
 
-Weapon_Texts.truelch_GridDischarge_Upgrade1 = "+1 Use"
-Weapon_Texts.truelch_GridDischarge_Upgrade2 = "+1 Use"
-
-
-truelch_GridDischarge_A = truelch_GridDischarge:new{
-	UpgradeDescription = "Increases uses per battle by one.",
-	Limited = 2,
-}
-
-truelch_GridDischarge_B = truelch_GridDischarge:new{
-	UpgradeDescription = "Increases uses per battle by one.",
-	Limited = 2,
-}
-
-truelch_GridDischarge_AB = truelch_GridDischarge:new{
-	Limited = 3,
-}
+Weapon_Texts.truelch_GridDischarge_Upgrade1 = "Auto-shield"
+Weapon_Texts.truelch_GridDischarge_Upgrade2 = "Explosive Shield"
 
 function truelch_GridDischarge:GetTargetArea(point)
 	local ret = PointList()
 
-	for dir = DIR_START, DIR_END do
-		ret:push_back(point + DIR_VECTORS[dir])
+	local moveSpeed = Pawn:GetMoveSpeed()
+
+	--can target self?
+
+	--yes, I'm lazy
+	for j = 0, 7 do
+		for i = 0, 7 do
+			local curr = Point(i, j)
+			if point:Manhattan(curr) <= moveSpeed then
+				ret:push_back(curr)
+			end
+		end
 	end
 	
 	return ret
@@ -541,27 +633,17 @@ end
 function truelch_GridDischarge:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
 
-	--https://github.com/search?q=repo%3Aitb-community%2Fmemedit%20power&type=code
-	--[[
-	local power = Game:GetPower()
-	local maxPower = power:GetMax()
-	local currPower = power:GetValue()
-	LOGF("------------------- currPower: %s / maxPower: %s", tostring(currPower), tostring(maxPower))
-	]]
-
 	local dmg = 2
 	if Game ~= nil then
 		dmg = Game:GetPower():GetValue()
 	end
 
 	local damage = SpaceDamage(p2, dmg)
-
+	damage.sAnimation = "LightningBolt_Animated"
 	ret:AddMelee(p1, damage)
 
 	return ret
-
 end
-
 
 
 --------------------
@@ -573,7 +655,7 @@ truelch_RiftInducer = Skill:new{
 	Name = "Rift Inducer",
 	Description = "Shoot a projectile opening a spatial rift at the target tile.",
 	Class = "Ranged",
-	Icon = "advanced/weapons/Science_TC_SwapOther.png",
+	Icon = "/weapons/truelch_rift_inducer.png",
 
 	--Shop
 	Rarity = 1,
@@ -584,12 +666,12 @@ truelch_RiftInducer = Skill:new{
 
 	--Gameplay
 	TwoClick = true,
-	Damage = 1,
+	Damage = 0,
 	SecondTargetRange = 1,
 	Confuse = false,
 
 	--Art
-	ShotUpArt = "advanced/effects/shotup_deploybomb.png",
+	UpShot = "advanced/effects/shotup_swapother.png",
 	LaunchSound = "/weapons/force_swap",
 
 	--Tip image
@@ -598,7 +680,7 @@ truelch_RiftInducer = Skill:new{
 		Enemy  = Point(2, 1),
 		Enemy2 = Point(1, 1),
 		Target = Point(2, 1),
-		Second_Click = Point(2,1),
+		Second_Click = Point(1, 1),
 		CustomPawn = "truelch_DislocationMech",
 		--Queued1 = Point(2,2), --didn't know this was a thing
 	}
@@ -614,7 +696,7 @@ truelch_RiftInducer_A = truelch_RiftInducer:new{
 	SecondTargetRange = 2,
 }
 
-truelch_RiftInducerB = truelch_RiftInducer:new{
+truelch_RiftInducer_B = truelch_RiftInducer:new{
 	UpgradeDescription = "Confuse vek swapped by this weapon, flipping their attack direction.",
 	Confuse = true,
 }
@@ -656,7 +738,7 @@ function truelch_RiftInducer:GetSkillEffect(p1, p2)
 		damage.sImageMark = "advanced/combat/icons/icon_teleport_glow.png"
 	end
 
-	ret:AddArtillery(damage, self.ShotUpArt)
+	ret:AddArtillery(damage, self.UpShot)
 
 	return ret
 end
@@ -677,9 +759,59 @@ function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
 end
 
 function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
-	local ret = self:GetSkillEffect(p1, p2)
+	--local ret = self:GetSkillEffect(p1, p2)	
+	local ret = SkillEffect()
 
+	--[[
+	local first_damage = SpaceDamage(p2, self.Damage)
+	if self.Confuse then
+		first_damage = SpaceDamage(p2, self.Damage, DIR_FLIP)
+	end
+	first_damage.bHidePath = true
+	ret:AddArtillery(first_damage, self.UpShot, NO_DELAY)
+
+	local second_damage = SpaceDamage(p3, self.Damage)
+	if self.Confuse then
+		second_damage = SpaceDamage(p3, self.Damage, DIR_FLIP)
+	end
+	second_damage.bHidePath = true
+	ret:AddArtillery(second_damage, self.UpShot)
+
+	local delay = Board:IsPawnSpace(p3) and 0 or FULL_DELAY
+	ret:AddTeleport(p2, p3, delay)
 	
+	if delay ~= FULL_DELAY then
+		ret:AddTeleport(p3, p2, FULL_DELAY)
+	end
+	]]
+
+	--SWAP TILES!!!
+	local tile2 = Board:GetTerrain(p2)
+	local currHealth2 = Board:GetHealth(p2)
+	local maxHealth2 = Board:GetHealth(p2)
+
+	local tile3 = Board:GetTerrain(p3)
+	local currHealth3 = Board:GetHealth(p3)
+	local maxHealth3 = Board:GetHealth(p3)
+
+	--rift_unit.png
+	local riftAnim2 = SpaceDamage(p2, 0)
+	--riftAnim2.sAnimation = "rift_unit"
+	riftAnim2.sAnimation = "RiftUnit"
+	--riftAnim2.sAnimation = "ExploAcid1"
+	riftAnim2.sSound = "/weapons/swap"
+	ret:AddDamage(riftAnim2)
+
+	local riftAnim3 = SpaceDamage(p3, 0)
+	riftAnim3.sAnimation = "rift_unit"
+	--riftAnim3.sAnimation = "ExploAcid1"
+	ret:AddDamage(riftAnim3)
+
+	ret:AddScript(string.format("Board:SetTerrain(%s, %s)",    p2:GetString(), tostring(tile3)))
+	ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p2:GetString(), tostring(currHealth3), tostring(maxHealth3)))
+
+	ret:AddScript(string.format("Board:SetTerrain(%s, %s)",    p3:GetString(), tostring(tile2)))
+	ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p3:GetString(), tostring(currHealth2), tostring(maxHealth2)))
 	
 	return ret
 end

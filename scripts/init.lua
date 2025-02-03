@@ -18,7 +18,7 @@ function mod:init()
 	require(self.scriptPath.."/libs/trait")
 	require(self.scriptPath.."/libs/tutorialTips")
 
-	--require(self.scriptPath.."assets")
+	require(self.scriptPath.."assets")
 	require(self.scriptPath.."palette")
 	--require(self.scriptPath.."achievements")
 	require(self.scriptPath.."sawblade")

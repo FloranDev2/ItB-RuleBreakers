@@ -8,7 +8,7 @@ local mod = modApi:getCurrentMod()
 local trait = require(scriptPath.."/libs/trait") --unnecessary?
 trait:add{
     pawnType = "truelch_Sawblade",
-    icon = "img/combat/icons/icon_protecc.png",
+    icon = "img/combat/icons/icon_sawblade_trait.png",
     icon_offset = Point(0, 0),
     desc_title = "Thorns",
     desc_text = "Any damage caused during player's turn to a Building will be redirected to any adjacent Emancipator Mech."
@@ -16,7 +16,7 @@ trait:add{
 
 trait:add{
     pawnType = "truelch_Sawblade_A",
-    icon = "img/combat/icons/icon_protecc.png",
+    icon = "img/combat/icons/icon_sawblade_trait.png",
     icon_offset = Point(0, 0),
     desc_title = "Thorns",
     desc_text = "Any damage caused during player's turn to a Building will be redirected to any adjacent Emancipator Mech."
