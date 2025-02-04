@@ -1,14 +1,14 @@
-modApi:addPalette({ --Or maybe I should to blue and yellow?
+modApi:addPalette({
 		ID = "truelch_RuleBreakersMagenta",
 		Name = "R",
-		--Image = "img/units/player/patriotMech_ns.png", --Patriot / Eagle
-		PlateHighlight = { 255, 255, 240 },	--lights
-		PlateLight     = {  91,  92,  93 }, --main highlight
-		PlateMid       = {  51,  52,  53 }, --main light
-		PlateDark      = {  30,  30,  28 },	--main mid
-		PlateOutline   = {  15,  15,  15 },	--main dark
-		PlateShadow    = { 125,  75,  50 },	--metal dark
-		BodyColor      = { 175, 100,  75 },	--metal mid
-		BodyHighlight  = { 255, 208,  75 },	--metal light
+		Image = "img/units/player/MechTritube.png",
+		PlateHighlight = { 197, 239, 217 },	--lights
+		PlateLight     = { 166, 143, 183 }, --main highlight
+		PlateMid       = { 133, 106, 145 }, --main light
+		PlateDark      = {  78,  43,  89 },	--main mid
+		PlateOutline   = {  42,  14,  51 },	--main dark
+		PlateShadow    = { 137, 121,  81 },	--metal dark
+		BodyColor      = { 193, 165, 100 },	--metal mid
+		BodyHighlight  = { 255, 243, 178 },	--metal light
 })
 modApi:getPaletteImageOffset("truelch_RuleBreakersMagenta")

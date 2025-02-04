@@ -2,7 +2,6 @@ local resourcePath = mod_loader.mods[modApi.currentMod].resourcePath
 local scriptPath = mod_loader.mods[modApi.currentMod].scriptPath
 local mechPath = resourcePath .."img/mechs/"
 local mod = modApi:getCurrentMod()
---local mechDiversYellow = modApi:getPaletteImageOffset("truelch_MechDiversYellow")
 
 --to do for both sawblade and upgraded saw blade:
 local trait = require(scriptPath.."/libs/trait") --unnecessary?
@@ -10,22 +9,23 @@ trait:add{
     pawnType = "truelch_Sawblade",
     icon = "img/combat/icons/icon_sawblade_trait.png",
     icon_offset = Point(0, 0),
-    desc_title = "Thorns",
-    desc_text = "Any damage caused during player's turn to a Building will be redirected to any adjacent Emancipator Mech."
+    desc_title = "Swablade",
+    desc_text = "Units attacking the sawblade in melee range will take 1 damage."
 }
 
+--truelch_Sawblade_A deals more return damage
 trait:add{
     pawnType = "truelch_Sawblade_A",
     icon = "img/combat/icons/icon_sawblade_trait.png",
     icon_offset = Point(0, 0),
-    desc_title = "Thorns",
-    desc_text = "Any damage caused during player's turn to a Building will be redirected to any adjacent Emancipator Mech."
+    desc_title = "Reinforced Sawblade",
+    desc_text = "Units attacking the sawblade in melee range will take 2 damage."
 }
 
 truelch_Sawblade = Pawn:new{
 	Name = "Sawblade",
 	Health = 1,
-	MoveSpeed = 0,
+	MoveSpeed = 15,
 	Image = "Bombling",
 	SkillList = { },
 	SoundLocation = "/mech/flying/jet_mech/",
@@ -33,7 +33,6 @@ truelch_Sawblade = Pawn:new{
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
 	Corpse = false,
-	--Pushable = false,
 }
 AddPawn("truelch_Sawblade")
 
@@ -59,7 +58,15 @@ end
 
 local function isSawbladePos(point)
 	local pawn = Board:GetPawn(point)
-	if pawn ~= nil and (pawn:GetType() == "truelch_Sawblade" or pawn:GetType() == "truelch_Sawblade_A") then
+	if pawn ~= nil and pawn:GetType() == "truelch_Sawblade" then
+		return true
+	end
+	return false
+end
+
+local function isReinforcedSawbladePos(point)
+	local pawn = Board:GetPawn(point)
+	if pawn ~= nil and pawn:GetType() == "truelch_Sawblade_A" then
 		return true
 	end
 	return false
@@ -73,11 +80,15 @@ local function computeThornDamage(p1, se)
 		local spaceDamage = se.effect:index(i)
 		local loc = spaceDamage.loc
 		local dist = p1:Manhattan(loc)
-		if isSawbladePos(loc) and dist == 1 then
-			LOG("Here!")
-			local thornDamage = SpaceDamage(p1, 1)
-			--TODO: animation
-			se:AddDamage(thornDamage)
+		if dist == 1 then
+			if isSawbladePos(loc) then
+				local thornDamage = SpaceDamage(p1, 1)
+				se:AddDamage(thornDamage)
+			elseif isReinforcedSawbladePos(point) then
+				local thornDamage = SpaceDamage(p1, 2)
+				--TODO: animation
+				se:AddDamage(thornDamage)
+			end
 		end
 	end
 
@@ -100,6 +111,7 @@ modapiext.events.onFinalEffectEnd:subscribe(EVENT_onFinalEffectEnd)
 
 --No, this happens during get skill effect. I want to way that the skill is effectively passed to the game!
 --Or maybe not
+--[[
 local function EVENT_onSkillBuild(mission, pawn, weaponId, p1, p2, skillEffect)
 	computeThornDamage(p1, skillEffect)
 end
@@ -110,3 +122,4 @@ end
 
 modapiext.events.onSkillBuild:subscribe(EVENT_onSkillBuild)
 modapiext.events.onFinalEffectBuild:subscribe(EVENT_onFinalEffectBuild)
+]]

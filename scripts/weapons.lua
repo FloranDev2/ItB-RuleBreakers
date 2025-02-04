@@ -224,8 +224,8 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 	for i = 1, dist do
 		local curr = p1 + DIR_VECTORS[dir] * i
 		local spaceDamage = SpaceDamage(curr, self.Damage + currEscDmg)
-		spaceDamage.sAnimation = "ExploRaining1"
-		ret:AddDamage(spaceDamage)
+		--spaceDamage.sAnimation = "ExploRaining1"
+		--ret:AddDamage(spaceDamage)
 
 		ret:AddDelay(0.5)
 
@@ -233,23 +233,32 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 			currEscDmg = currEscDmg + self.EscalatingDamage
 		end
 
+		local regular = true
+
 		if curr == p2 then
 			if Board:IsDeadly(spaceDamage, Pawn) then
 				--spaceDamage.bKO_Effect = true --??
 				spaceDamage.sPawn = self.SawbladePawn
+				--spaceDamage.sAnimation = ""
 				ret:AddDamage(spaceDamage)
+				regular = false
 			elseif not Board:IsBlocked(p2, PATH_PROJECTILE) then
+				--spaceDamage.sAnimation = ""
 				ret:AddDamage(spaceDamage)
 
 				local spawnSawblade = SpaceDamage(p2, 0)
 				spawnSawblade.sPawn = self.SawbladePawn --doesn't preview the spawned unit
 				ret:AddDamage(spawnSawblade)
-			else
-				ret:AddDamage(spaceDamage)
-				--Set status: sawblade destroyed (since it's not actually deployed)
-				ret:AddScript("missionData().sawStatus[Pawn:GetId()] = 1")
-				--TODO: play anim?
+				regular = false
 			end
+		end
+
+		if regular then
+			spaceDamage.sAnimation = "ExploRaining1"
+			ret:AddDamage(spaceDamage)
+			--Set status: sawblade destroyed (since it's not actually deployed)
+			ret:AddScript("missionData().sawStatus[Pawn:GetId()] = 1")
+			--TODO: play anim?
 		end
 
 		--ret:AddDamage(spaceDamage)
@@ -285,44 +294,68 @@ LOG("La distance entre le point et la ligne est: " .. dist)
 ]]
 
 
-local function getLinePoints(p1, p2)
-	LOGF("getLinePoints(p1: %s, p2: %s)", p1:GetString(), p2:GetString())
-	local linePoints = {}
+local function computeLine(ret, p1, p2)
+	LOGF("----------- computeLine(p1: %s, p2: %s)", p1:GetString(), p2:GetString())
+	--local linePoints = {}
 
 	if p1.x == p2.x or p1.y == p2.y then
-		LOG(" ----------- Aligned - A")
+		LOG("----------- Aligned")
 		--Aligned
 		local dir = GetDirection(p2 - p1)
 		for i = 0, p1:Manhattan(p2) do
 			local curr = p1 + DIR_VECTORS[dir] * i
-			table.insert(linePoints, curr)
+			--table.insert(linePoints, curr)
+
+			local damage = SpaceDamage(curr, 3)
+			ret:AddDamage(damage)
+
 		end
 	else
-		LOG(" ----------- Diagonal - A")
+		LOG("----------- Diagonal")
 		local iMin = math.min(p1.x, p2.x)
 		local iMax = math.max(p1.x, p2.x)
 
 		local jMin = math.min(p1.y, p2.y)
 		local jMax = math.max(p1.y, p2.y)
 
-		LOGF("iMin: %s, iMax: %s, jMin: %s, jMax: %s", tostring(iMin), tostring(iMax), tostring(jMin), tostring(jMax))
+		--LOGF("iMin: %s, iMax: %s, jMin: %s, jMax: %s", tostring(iMin), tostring(iMax), tostring(jMin), tostring(jMax))
 
 		for j = jMin, jMax do
 			for i = iMin, iMax do
 				local curr = Point(i, j)
-				LOG(" ----------- curr: "..curr:GetString())
-				--local dist = DistFromLine(curr, p1, p2, iMin, iMax, jMin, jMax)
-				local dist = distancePointLigne(curr.x, curr.y, p1.x, p1.y, p2.x, p2.y)
-				if dist <= 1 and curr ~= p1 and curr ~= p2 then
-					LOG("---------- added: "..curr:GetString())
-					table.insert(linePoints, curr)
+				if curr ~= p1 and curr ~= p2 then
+					LOG("----------- curr: "..curr:GetString())
+					--local dist = DistFromLine(curr, p1, p2, iMin, iMax, jMin, jMax)
+					local dist = distancePointLigne(curr.x, curr.y, p1.x, p1.y, p2.x, p2.y)
+					LOG("----------- dist: "..tostring(dist))
+
+					local dmg = 0
+
+					if dist <= 0.1 then
+						LOG("----------- A")
+						dmg = 3
+					elseif dist <= 0.5 then
+						LOG("----------- B")
+						dmg = 2
+					elseif dist <= 0.75 then
+						LOG("----------- C")
+						dmg = 1
+					end
+
+					local damage = SpaceDamage(curr, dmg)
+					ret:AddDamage(damage)
+
+					LOG("----------- END")
+
+					--[[
+					if dist <= 1 and curr ~= p1 and curr ~= p2 then
+						table.insert(linePoints, curr)
+					end
+					]]
 				end
 			end
 		end
-
 	end
-
-	return linePoints
 end
 
 function truelch_SawbladeLauncher:ReturnSawblade(p1, p2)
@@ -333,11 +366,7 @@ function truelch_SawbladeLauncher:ReturnSawblade(p1, p2)
 	ret:AddArtillery(p2, returnProj, self.ShotUpArt, NO_DELAY)
 
 	--Line calculation (TODO)
-	local line = getLinePoints(p1, p2)
-	for _, point in ipairs(line) do
-		local damage = SpaceDamage(point, self.ReturnDamage)
-		ret:AddDamage(damage)
-	end
+	computeLine(ret, p1, p2)
 
 	--Destroy sawblade
 	local killSawblade = SpaceDamage(p2, DAMAGE_DEATH)
@@ -398,8 +427,7 @@ local function EVENT_onMissionStarted(mission)
 		
 		--Returns true if the pawn has powered a weapon of type weapon or a less powered variant of it. false otherwise.
 		--just using mech:IsWeaponPowered("truelch_SawbladeLauncher_AB") did NOT work with base version, unlike what documentation described.
-		if mech ~= nil and
-				(mech:IsWeaponPowered("truelch_SawbladeLauncher") or
+		if mech ~= nil and (mech:IsWeaponPowered("truelch_SawbladeLauncher") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_A") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_B") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_AB")) then --this should be the only one required but it didn't work for the base weapon
@@ -435,7 +463,7 @@ local function EVENT_onSkillEnd(mission, pawn, weaponId, p1, p2)
 			weaponId == "truelch_SawbladeLauncher_A" or
 			weaponId == "truelch_SawbladeLauncher_B" or
 			weaponId == "truelch_SawbladeLauncher_AB" then
-		LOGF("---------- Launcher registered: %s, id: %s", pawn:GetMechName(), tostring(pawn:GetId()))
+		--LOGF("---------- Launcher registered: %s, id: %s", pawn:GetMechName(), tostring(pawn:GetId()))
 
 		--Do NOT attempt to save the pawn. Save the id instead for example
 		--https://discord.com/channels/417639520507527189/418142041189646336/1335038444090691626
@@ -526,7 +554,7 @@ function truelch_GridShield:GetTargetArea(point)
 	for j = 0, 7 do
 		for i = 0, 7 do
 			local curr = Point(i, j)
-			if point:Manhattan(curr) <= moveSpeed then
+			if point:Manhattan(curr) <= moveSpeed and Board:IsBuilding(curr) then
 				ret:push_back(curr)
 			end
 		end
@@ -542,8 +570,8 @@ function truelch_GridShield:GetSkillEffect(p1, p2)
 		--ret:AddScript(string.format([[Board:AddAlert(%s, "Auto-Shield")]], p2))
 		Board:AddAlert(p1, "Auto-Shield")
 		local autoShield = SpaceDamage(p1, 0)
-		shield.iShield = 1
-		ret:AddDamage(shield)
+		autoShield.iShield = 1
+		ret:AddDamage(autoShield)
 	end
 
 	ret:AddTeleport(p1, p2, FULL_DELAY)
@@ -635,18 +663,9 @@ truelch_GridDischarge_AB = truelch_GridDischarge:new{
 function truelch_GridDischarge:GetTargetArea(point)
 	local ret = PointList()
 
-	local moveSpeed = Pawn:GetMoveSpeed()
-
-	--can target self?
-
-	--yes, I'm lazy
-	for j = 0, 7 do
-		for i = 0, 7 do
-			local curr = Point(i, j)
-			if point:Manhattan(curr) <= moveSpeed then
-				ret:push_back(curr)
-			end
-		end
+	for dir = DIR_START, DIR_END do
+		local curr = point + DIR_VECTORS[dir]
+		ret:push_back(curr)
 	end
 	
 	return ret
