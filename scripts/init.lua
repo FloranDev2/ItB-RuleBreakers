@@ -23,7 +23,12 @@ function mod:init()
 	--require(self.scriptPath.."achievements")
 	require(self.scriptPath.."sawblade")
 	require(self.scriptPath.."pawns")
-	require(self.scriptPath.."weapons")
+	--require(self.scriptPath.."weapons")
+	require(self.scriptPath.."/weapons/debug_weapon")
+	require(self.scriptPath.."/weapons/sawblade_launcher")
+	require(self.scriptPath.."/weapons/grid_shield")
+	require(self.scriptPath.."/weapons/grid_discharge")
+	require(self.scriptPath.."/weapons/rift_inducer")
 end
 
 function mod:load(options, version)

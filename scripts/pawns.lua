@@ -11,7 +11,7 @@ trait:add{
     icon = "img/combat/icons/icon_grid_mech_trait.png",
     icon_offset = Point(0, 0),
     desc_title = "Grid Protector",
-    desc_text = "Instead of moving, teleports to a building in move range. While the Grid Mech is alive, the building is immune to damage."
+    desc_text = "Instead of moving, teleports to a building in move range. While the Grid Mech is alive, the building is immune to damage. The Grid Mech is also immune to Web."
 }
 
 
@@ -23,11 +23,11 @@ truelch_SawbladeMech = Pawn:new {
 	Name = "Sawblade Mech",
 	Class = "Brute",
 	Health = 3,
-	MoveSpeed = 15, --3
+	MoveSpeed = 4, --idea: 3 + 1 if the sawblade isn't on the mech?
 	Image = "MechPierce",
 	ImageOffset = palette,
 	--ImageOffset = 9,
-	SkillList = { "truelch_SawbladeLauncher", "Brute_Tankmech" },
+	SkillList = { "truelch_SawbladeLauncher", "truelch_debug_weapon" },
 	SoundLocation = "/mech/brute/pierce_mech/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
@@ -54,32 +54,31 @@ truelch_GridMech = Pawn:new {
 	Massive = true,
 	Flying = true, --not really necessary in the end?
 	IgnoreSmoke = true,
-	WebImmune = true, --I think you need to do it by script
+	--WebImmune = true, --I think you need to do it by script
 	Pushable = false, --maybe?
 	--Corpse = false, --test?
 }
 
-local function computeThornDamage(p1, se)
-	if se == nil or se.effect == nil then return end
-
-	for i = 1, se.effect:size() do
-		local spaceDamage = se.effect:index(i)
-		local loc = spaceDamage.loc
-		local dist = p1:Manhattan(loc)
-		if dist == 1 then
-			if isSawbladePos(loc) then
-				local thornDamage = SpaceDamage(p1, 1)
-				se:AddDamage(thornDamage)
-			elseif isReinforcedSawbladePos(loc) then
-				local thornDamage = SpaceDamage(p1, 2)
-				--TODO: animation
-				se:AddDamage(thornDamage)
-			end
-		end
+--Taken from Generic's Leaper (and changed to an event because why not)
+local function EVENT_onPawnGrappled(mission, pawn, isGrappled)
+	if isGrappled and pawn:GetType() == "truelch_GridMech" then --If we're grappled and it's our truelch_GridMech
+		--If removing the web right away it looks really weird (try it if you want). So we'll wait about half a second with this
+		modApi:scheduleHook(550, function()
+			local space = pawn:GetSpace() --Store the space so we can move it back later
+			Board:AddAlert(space, "WEB IMMUNE") --This will play an alert when it happens
+			--It's entirely optional, remove it if you don't like it
+			pawn:SetSpace(Point(-1, -1)) --Move the pawn to Point(-1,-1)
+			modApi:runLater(function() --This runs a function one frame later so things get updated
+				pawn:SetSpace(space) --Move the pawn back, after that one frame. The web will be gone
+			end)
+		end)
 	end
 end
 
-function GetProteccSpace()
+modapiext.events.onPawnIsGrappled:subscribe(EVENT_onPawnGrappled)
+
+
+function getProteccSpace()
 	for j = 0, 7 do
 		for i = 0, 7 do
 			--Return the first fitting one, don't need to pick a random fitting positions among all possible
@@ -90,17 +89,18 @@ function GetProteccSpace()
 					Board:GetItem(curr) == nil and
 					]]
 					Board:IsTerrain(curr, TERRAIN_ROAD) then
-				LOG("--------- GetProteccSpace() -> curr: "..curr:GetString())
+				--LOG("--------- getProteccSpace() -> curr: "..curr:GetString())
 				return curr
 			end
 		end
 	end
-	LOG("GetProteccSpace() -> couldn't find a fitting space :( -> returning Point(-1, -1)")
+	LOG("getProteccSpace() -> couldn't find a fitting space :( -> returning Point(-1, -1)")
 	return Point(-1, -1) --eh
 end
 
 
 local function computeGridMechProtecc(p1, se)
+	--LOG("=================== computeGridMechProtecc ===================")
 	if se == nil or se.effect == nil then return end
 
 	--took that safety from my hell breachers protecc
@@ -114,12 +114,12 @@ local function computeGridMechProtecc(p1, se)
         local spaceDamage = se.effect:index(i)
         
         if spaceDamage.iDamage > 0 and Board:IsBuilding(spaceDamage.loc) then
-        	LOG("-------------- spaceDamage.loc: "..spaceDamage.loc:GetString())
+        	--LOG("-------------- spaceDamage.loc: "..spaceDamage.loc:GetString())
         	local origin = spaceDamage.loc
             local proteccPawn = Board:GetPawn(origin)
 
             if proteccPawn ~= nil and proteccPawn:GetType() == "truelch_GridMech" then
-            	LOG("------ Protected by a Grid Mech!")
+            	--LOG("-------------- Protected by a Grid Mech!")
                 damageRedirected = damageRedirected + spaceDamage.iDamage
                 spaceDamage.iDamage = 0
                 spaceDamage.sImageMark = "combat/icons/icon_guard_glow.png" --moved the icon to the protected building
@@ -132,19 +132,19 @@ local function computeGridMechProtecc(p1, se)
                 	--se:AddDamage(redir)
 
                 	--V2: Add safe damage (+ trying to apply it on a different space)                                        
-                    local testSpace = GetProteccSpace()
+                    local testSpace = getProteccSpace()
                     --local testSpace = Point(-1, -1)
                     local redir = SpaceDamage(testSpace, damageRedirected)
                     redir.sImageMark = "combat/icons/icon_resupply.png"
                     redir.bHide = true
 
-                    LOG(string.format("--------------- Before: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
+                    --LOG(string.format("-------------- Before: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
                     
                     se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), testSpace:GetString()))
                 	se:AddSafeDamage(redir)
                     se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), origin:GetString()))
 
-                    LOG(string.format("--------------- After: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
+                    --LOG(string.format("-------------- After: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
 
                     --V3: Pawn:ApplyDamage()
                     --https://github.com/itb-community/ITB-ModLoader/wiki/Pawn#applyDamage
@@ -156,10 +156,19 @@ local function computeGridMechProtecc(p1, se)
 end
 
 
+--[[
 --V2
 local function EVENT_onSkillEnd(mission, pawn, weaponId, p1, p2)
 	
 end
+
+local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
+	
+end
+
+modapiext.events.onSkillEnd:subscribe(EVENT_onSkillBuild)
+modapiext.events.onFinalEffectEnd:subscribe(EVENT_onFinalEffectBuild)
+]]
 
 
 --V1
@@ -174,7 +183,6 @@ end
 modapiext.events.onSkillBuild:subscribe(EVENT_onSkillBuild)
 modapiext.events.onFinalEffectBuild:subscribe(EVENT_onFinalEffectBuild)
 
-
 ------------------------
 --- Dislocation Mech ---
 ------------------------
@@ -187,7 +195,7 @@ truelch_DislocationMech = Pawn:new {
 	Image = "MechArt",
 	ImageOffset = palette,
 	--ImageOffset = 9,
-	SkillList = { "truelch_RiftInducer", "Brute_Tankmech" },
+	SkillList = { "truelch_RiftInducer" },
 	SoundLocation = "/enemy/burrower_2/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,

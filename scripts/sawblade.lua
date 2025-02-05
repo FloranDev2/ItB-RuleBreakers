@@ -13,6 +13,7 @@ trait:add{
     desc_text = "Units attacking the sawblade in melee range will take 1 damage."
 }
 
+--[[
 --truelch_Sawblade_A deals more return damage
 trait:add{
     pawnType = "truelch_Sawblade_A",
@@ -21,14 +22,15 @@ trait:add{
     desc_title = "Reinforced Sawblade",
     desc_text = "Units attacking the sawblade in melee range will take 2 damage."
 }
+]]
 
 truelch_Sawblade = Pawn:new{
 	Name = "Sawblade",
 	Health = 1,
-	MoveSpeed = 15,
+	MoveSpeed = 0,
 	Image = "Bombling",
 	SkillList = { },
-	SoundLocation = "/mech/flying/jet_mech/",
+	SoundLocation = "", --"/mech/flying/jet_mech/"
 	ImageOffset = 9,
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
