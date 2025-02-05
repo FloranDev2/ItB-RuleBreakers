@@ -299,7 +299,7 @@ local function computeLine(ret, p1, p2)
 	--local linePoints = {}
 
 	if p1.x == p2.x or p1.y == p2.y then
-		LOG("----------- Aligned")
+		--LOG("----------- Aligned")
 		--Aligned
 		local dir = GetDirection(p2 - p1)
 		for i = 0, p1:Manhattan(p2) do
@@ -311,7 +311,7 @@ local function computeLine(ret, p1, p2)
 
 		end
 	else
-		LOG("----------- Diagonal")
+		--LOG("----------- Diagonal")
 		local iMin = math.min(p1.x, p2.x)
 		local iMax = math.max(p1.x, p2.x)
 
@@ -324,21 +324,18 @@ local function computeLine(ret, p1, p2)
 			for i = iMin, iMax do
 				local curr = Point(i, j)
 				if curr ~= p1 and curr ~= p2 then
-					LOG("----------- curr: "..curr:GetString())
+					--LOG("----------- curr: "..curr:GetString())
 					--local dist = DistFromLine(curr, p1, p2, iMin, iMax, jMin, jMax)
 					local dist = distancePointLigne(curr.x, curr.y, p1.x, p1.y, p2.x, p2.y)
-					LOG("----------- dist: "..tostring(dist))
+					--LOG("----------- dist: "..tostring(dist))
 
 					local dmg = 0
 
 					if dist <= 0.1 then
-						LOG("----------- A")
 						dmg = 3
 					elseif dist <= 0.5 then
-						LOG("----------- B")
 						dmg = 2
 					elseif dist <= 0.75 then
-						LOG("----------- C")
 						dmg = 1
 					end
 
@@ -566,7 +563,7 @@ end
 function truelch_GridShield:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
 
-	if Board:IsTipImage() then
+	if Board:IsTipImage() and self.AutoShield then
 		--ret:AddScript(string.format([[Board:AddAlert(%s, "Auto-Shield")]], p2))
 		Board:AddAlert(p1, "Auto-Shield")
 		local autoShield = SpaceDamage(p1, 0)
@@ -674,7 +671,7 @@ end
 function truelch_GridDischarge:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
 
-	local dmg = 2
+	local dmg = 5 --initial grid is 5 so preview from hangar is more accurate
 	if Game ~= nil then
 		dmg = Game:GetPower():GetValue()
 	end
@@ -773,8 +770,11 @@ function truelch_RiftInducer:GetSkillEffect(p1, p2)
 	--From Science_TC_SwapOther
 	if not Board:IsPawnSpace(p2) then 
 		damage.sImageMark = "advanced/combat/icons/icon_x_glow.png"
+	--Yes, we gonna swap even tiles occupied by Stable pawns!
+	--[[
 	elseif Board:GetPawn(p2):IsGuarding() then
 		damage.sImageMark = "combat/icons/icon_guard_glow.png"
+	]]
 	else
 		damage.sImageMark = "advanced/combat/icons/icon_teleport_glow.png"
 	end

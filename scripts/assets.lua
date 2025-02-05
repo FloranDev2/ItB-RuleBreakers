@@ -13,3 +13,7 @@ modApi:appendAsset("img/weapons/truelch_sawblade_launcher.png", resourcePath.."i
 modApi:appendAsset("img/weapons/truelch_grid_shield.png",       resourcePath.."img/weapons/truelch_grid_shield.png")
 modApi:appendAsset("img/weapons/truelch_grid_discharge.png",    resourcePath.."img/weapons/truelch_grid_discharge.png")
 modApi:appendAsset("img/weapons/truelch_rift_inducer.png",      resourcePath.."img/weapons/truelch_rift_inducer.png")
+
+--Damage mark
+modApi:appendAsset("img/combat/icons/icon_resupply.png", resourcePath.."img/combat/icons/icon_resupply.png")
+	Location["combat/icons/icon_resupply.png"] = Point(-10, 16)

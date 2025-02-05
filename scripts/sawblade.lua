@@ -46,7 +46,6 @@ AddPawn("truelch_Sawblade_A")
 --- Events ---
 --------------
 
---[[
 local function isVarNil(msg, var)
 	if var == nil then
 		LOG("----------- "..msg.." is nil :(")
@@ -54,7 +53,6 @@ local function isVarNil(msg, var)
 		LOG("----------- "..msg.." exists :)")
 	end
 end
-]]
 
 local function isSawbladePos(point)
 	local pawn = Board:GetPawn(point)
@@ -76,6 +74,12 @@ end
 local function computeThornDamage(p1, se)
 	if se == nil or se.effect == nil then return end
 
+	--took that safety from my hell breachers protecc
+    if not se.q_effect:empty() then
+        --LOG("HERE!!! queued effect detected")
+        return
+    end
+
 	for i = 1, se.effect:size() do
 		local spaceDamage = se.effect:index(i)
 		local loc = spaceDamage.loc
@@ -83,8 +87,9 @@ local function computeThornDamage(p1, se)
 		if dist == 1 then
 			if isSawbladePos(loc) then
 				local thornDamage = SpaceDamage(p1, 1)
+				--TODO: animation
 				se:AddDamage(thornDamage)
-			elseif isReinforcedSawbladePos(point) then
+			elseif isReinforcedSawbladePos(loc) then
 				local thornDamage = SpaceDamage(p1, 2)
 				--TODO: animation
 				se:AddDamage(thornDamage)
@@ -94,24 +99,6 @@ local function computeThornDamage(p1, se)
 
 end
 
-
---Wait, the following doesn't give me a SkillEffect
---[[
-local function EVENT_onSkillEnd(mission, pawn, weaponId, p1, p2, skillEffect)
-	computeThornDamage(p1, skillEffect)
-end
-
-local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3, skillEffect)
-	computeThornDamage(p1, skillEffect)
-end
-
-modapiext.events.onSkillEnd:subscribe(EVENT_onSkillEnd)
-modapiext.events.onFinalEffectEnd:subscribe(EVENT_onFinalEffectEnd)
-]]
-
---No, this happens during get skill effect. I want to way that the skill is effectively passed to the game!
---Or maybe not
---[[
 local function EVENT_onSkillBuild(mission, pawn, weaponId, p1, p2, skillEffect)
 	computeThornDamage(p1, skillEffect)
 end
@@ -122,4 +109,3 @@ end
 
 modapiext.events.onSkillBuild:subscribe(EVENT_onSkillBuild)
 modapiext.events.onFinalEffectBuild:subscribe(EVENT_onFinalEffectBuild)
-]]
