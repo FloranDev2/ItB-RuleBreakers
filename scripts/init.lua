@@ -2,7 +2,7 @@ local mod = {
 	id = "truelch_RuleBreakers",
 	name = "Rule Breakers",
 	icon = "img/mod_icon.png",
-	version = "0.0.1",
+	version = "0.0.2",
 	modApiVersion = "2.9.2",
 	--gameVersion = "1.2.88",
     	dependencies = {
@@ -29,6 +29,19 @@ function mod:init()
 	require(self.scriptPath.."/weapons/grid_shield")
 	require(self.scriptPath.."/weapons/grid_discharge")
 	require(self.scriptPath.."/weapons/rift_inducer")
+
+	--Options
+	modApi:addGenerationOption("option_smoothed_line",
+		"Smooth line",
+		"Damage dealt by the sawblade depends on the distance.",
+		{enabled = true}
+	)
+
+	modApi:addGenerationOption("option_diagonal_launch",
+		"Diagonal launch",
+		"Launching sawblade can also be diagonal.",
+		{enabled = false}
+	)
 end
 
 function mod:load(options, version)

@@ -1,15 +1,25 @@
+local mod = mod_loader.mods[modApi.currentMod]
+
 local path = mod_loader.mods[modApi.currentMod].scriptPath
 local customAnim = require(path.."libs/customAnim")
+
+local smoothedLine = true
+modApi.events.onModLoaded:subscribe(function(id)
+	if id ~= mod.id then return end
+	local options = mod_loader.currentModContent[id].options
+	smoothedLine = options["option_smoothed_line"].enabled
+end)
+
+local diagonalLaunch = false
+modApi.events.onModLoaded:subscribe(function(id)
+	if id ~= mod.id then return end
+	local options = mod_loader.currentModContent[id].options
+	diagonalLaunch = options["option_diagonal_launch"].enabled
+end)
 
 ------------------------
 --- HELPER FUNCTIONS ---
 ------------------------
-
---[[
-local testTable = {}
-testTable[0] = "zog"
-LOG("testTable[0]: "..testTable[0])
-]]
 
 local function isMission()
 	local mission = GetCurrentMission()
@@ -32,7 +42,6 @@ local function missionData()
 	---> 1: sawblade is dead
 	---> <sawblade's id>: sawblade is alive!
 	if mission.truelch_RuleBreakers.sawStatus == nil then
-		--LOG("------------------- sawStatus table initialized")
 		mission.truelch_RuleBreakers.sawStatus = {}
 	end
 
@@ -52,14 +61,6 @@ local function debugSawStatus()
 	LOG("tostring(missionData().sawStatus)): "..tostring(missionData().sawStatus))
 	--LOG("tostring(extract_table(missionData().sawStatus)): "..tostring(extract_table(missionData().sawStatus)))
 
-	--[[
-	--for i, elem in pairs(missionData().sawStatus) do
-	for i, elem in ipairs(missionData().sawStatus) do
-		--LOGF("i: %s elem: %s", tostring(i),tostring(elem))
-		--LOG("extract elem: "..tostring(extract_table(elem)))
-	end
-	]]
-
 	--Simpler attempt:
 	for i = 0, 2 do
 		if missionData().sawStatus[i] ~= nil then
@@ -71,18 +72,8 @@ local function debugSawStatus()
 end
 
 function truelch_addSawBlade(pawn)
-	LOG("truelch_addSawBlade")
-	if pawn == nil then
-		LOG("pawn == nil -> return")
-		return
-	end
-
+	if pawn == nil then return end
 	missionData().sawStatus[pawn:GetId()] = 0
-
-	--TODO: add custom anim
-
-	--LOG("missionData().sawStatus[pawn:GetId()]: "..tostring(missionData().sawStatus[pawn:GetId()]))
-
 	debugSawStatus()
 end
 
@@ -141,7 +132,6 @@ modApi:addWeaponDrop("truelch_SawbladeLauncher")
 Weapon_Texts.truelch_SawbladeLauncher_Upgrade1 = "Reinforced Sawblade"
 Weapon_Texts.truelch_SawbladeLauncher_Upgrade2 = "Escalating Damage"
 
-
 truelch_SawbladeLauncher_A = truelch_SawbladeLauncher:new{
 	UpgradeDescription = "The sawblade gets +2 hp and +1 Thorns damage.",
 	SawbladePawn = "truelch_Sawblade_A",
@@ -171,12 +161,23 @@ function truelch_SawbladeLauncher:GetTargetArea_Normal(point)
 	local status = self:GetSawbladeStatus()
 
 	if status == 0 or status == 1 then
-		for dir = DIR_START, DIR_END do
-			for i = 1, self.Range do
-				local curr = point + DIR_VECTORS[dir]*i
-				ret:push_back(curr)
+		if diagonalLaunch then
+			for j = -self.Range, self.Range do
+				for i = -self.Range, self.Range do
+					local curr = point + Point(i, j)
+					if Board:IsValid(curr) then
+						ret:push_back(curr)
+					end
+				end
 			end
-		end
+		else
+			for dir = DIR_START, DIR_END do
+				for i = 1, self.Range do
+					local curr = point + DIR_VECTORS[dir]*i
+					ret:push_back(curr)
+				end
+			end
+		end		
 	elseif status == 1 then
 		--Sawblade is dead: need to recreate it
 		ret:push_back(point)
@@ -341,7 +342,7 @@ local function computeLine(ret, p1, p2)
 					local damage = SpaceDamage(curr, dmg)
 					ret:AddDamage(damage)
 
-					LOG("----------- END")
+					--LOG("----------- END")
 
 					--[[
 					if dist <= 1 and curr ~= p1 and curr ~= p2 then
@@ -388,7 +389,7 @@ function truelch_SawbladeLauncher:GetSkillEffect_Normal(p1, p2)
 
 	local status = self:GetSawbladeStatus()
 
-	LOG("truelch_SawbladeLauncher:GetSkillEffect -> status: "..tostring(status))
+	--LOG("truelch_SawbladeLauncher:GetSkillEffect -> status: "..tostring(status))
 
 	if status == nil or status == -1 then --error!
 		LOG(" ----------- return error")

@@ -5,6 +5,8 @@ Stuff to check:
 
 - Train: OK!!
 - Armored Train
+  -> trains are fine BUT since they are multi tile, they can potentially be displaced in a way that the other part will be moved
+     to an occupied tile.
 
 - Old Bar is a problem
 
@@ -17,7 +19,7 @@ str_battery1
 
 local riftPawnExceptions = {
 	"Dam_Pawn",
-	--"SatelliteRocket", --maybe?
+	--"SatelliteRocket", --it's fine
 }
 
 local function isRiftExc(pawn)
@@ -108,12 +110,6 @@ function truelch_RiftInducer:GetTargetArea(point)
 			local curr = point + DIR_VECTORS[dir] * i
 			local pawn = Board:GetPawn(curr)
 
-			--[[
-			if Board:IsValid(curr) and (pawn == nil or not isRiftExc(pawn)) then
-				ret:push_back(curr)
-			end
-			]]
-
 			if isLocOkForRift(curr) then
 				ret:push_back(curr)
 			end
@@ -155,12 +151,6 @@ function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
 		for i = 1, self.SecondTargetRange do
 			local curr = p2 + DIR_VECTORS[dir] * i
 			local pawn = Board:GetPawn(curr)
-
-			--[[
-			if Board:IsValid(curr) and (pawn == nil or not isRiftExc(pawn)) then
-				ret:push_back(curr)
-			end
-			]]
 
 			if isLocOkForRift(curr) then
 				ret:push_back(curr)

@@ -1,3 +1,7 @@
+--------------------------
+--- Imports and traits ---
+--------------------------
+
 local resourcePath = mod_loader.mods[modApi.currentMod].resourcePath
 local scriptPath = mod_loader.mods[modApi.currentMod].scriptPath
 local mechPath = resourcePath .."img/mechs/"
@@ -11,9 +15,39 @@ trait:add{
     icon = "img/combat/icons/icon_grid_mech_trait.png",
     icon_offset = Point(0, 0),
     desc_title = "Grid Protector",
-    desc_text = "Instead of moving, teleports to a building in move range. While the Grid Mech is alive, the building is immune to damage. The Grid Mech is also immune to Web."
+    desc_text = "Instead of moving, teleports to a building in move range.\nWhile the Grid Mech is alive, the building is immune to damage.\nThe Grid Mech is also immune to Web."
 }
 
+--------------------
+--- Mission Data ---
+--------------------
+
+local function isMission()
+	local mission = GetCurrentMission()
+
+	return true
+		and isGame()
+		and mission ~= nil
+		and mission ~= Mission_Test
+end
+
+local function missionData()
+	local mission = GetCurrentMission()
+
+	if mission.truelch_RuleBreakers == nil then
+		mission.truelch_RuleBreakers = {}
+	end
+
+	--missionData().sawStatus[pawnId] =
+	---> 0: sawblade is on the mech
+	---> 1: sawblade is dead
+	---> <sawblade's id>: sawblade is alive!
+	if mission.truelch_RuleBreakers.sawStatus == nil then
+		mission.truelch_RuleBreakers.sawStatus = {}
+	end
+
+	return mission.truelch_RuleBreakers
+end
 
 ----------------
 --- Saw Mech ---
@@ -26,13 +60,159 @@ truelch_SawbladeMech = Pawn:new {
 	MoveSpeed = 4, --idea: 3 + 1 if the sawblade isn't on the mech?
 	Image = "MechPierce",
 	ImageOffset = palette,
-	--ImageOffset = 9,
-	SkillList = { "truelch_SawbladeLauncher", "truelch_debug_weapon" },
+	SkillList = { "truelch_SawbladeLauncher" --[[, "truelch_debug_weapon"]] },
 	SoundLocation = "/mech/brute/pierce_mech/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
 	Massive = true,
 }
+
+local function isEquippedWithSawbladeLauncher(mech)
+	return mech ~= nil and (mech:IsWeaponPowered("truelch_SawbladeLauncher") or
+		mech:IsWeaponPowered("truelch_SawbladeLauncher_A") or
+		mech:IsWeaponPowered("truelch_SawbladeLauncher_B") or
+		mech:IsWeaponPowered("truelch_SawbladeLauncher_AB"))
+end
+
+local function isSawbladePos(curr)
+	local pawn = Board:GetPawn(curr)
+	return pawn ~= nil and (pawn:GetType() == "truelch_Sawblade" or pawn:GetType() == "truelch_Sawblade_A")
+end
+
+--[[
+The idea is that if the sawblade's pos is adjacent to a tile in the path
+]]
+local function isReachable(pawn, sawbladePos)
+	--LOG(" ============= isReachable() =============")
+	local moveSpeed = pawn:GetMoveSpeed()
+	--LOG("------------ moveSpeed: "..tostring(moveSpeed))
+	local reachable = extract_table(Board:GetReachable(pawn:GetSpace(), pawn:GetMoveSpeed(), pawn:GetPathProf()))
+
+	for i = 1, #reachable do
+		--LOG("------------ i: "..tostring(i))
+		local pos = reachable[i]
+		--LOG("------------ pos: "..pos:GetString())		
+
+		local yes = false
+		for dir = DIR_START, DIR_END do
+			--LOG("------------ dir: "..tostring(dir))
+			local adj = pos + DIR_VECTORS[dir]
+			--LOG("------------ adj: "..adj:GetString())
+			if adj == sawbladePos then
+				--LOG("------------ yes!")
+				yes = true
+			end
+		end
+
+		--Compute point distance
+		--local path = Board:GetPath(pawn:GetSpace(), pos, pawn:GetPathProf()):size()
+		local dist = Board:GetPath(pawn:GetSpace(), pos, pawn:GetPathProf()):size()
+		--Maybe I can get the length of the path
+		--dist = #path --no
+
+		--[[
+		for i = 1, #reachable do
+			local pathPoint = reachable[i]
+			LOG("------------ dist = dist + 1")
+			dist = dist + 1
+		end	
+		]]	
+
+		--LOG("------------ dist: "..tostring(dist))
+
+	    if dist + 1 <= moveSpeed and yes then
+	    	--LOG("------------ return true")
+	    	return true
+	    end
+	end
+
+	--LOG("------------ return false")
+
+	return false
+end
+
+--Not just Sawblade Mech, but a Mech that is equipped with a truelch_SawbladeLauncher
+local oldMove = Move.GetTargetArea
+function Move:GetTargetArea(p, ...)	
+	local mover = Board:GetPawn(p)
+	if mover and isEquippedWithSawbladeLauncher(mover) then
+
+		--LOG("---------------- A")
+		local ret = PointList()
+		--Add original move
+		local reachable = extract_table(Board:GetReachable(mover:GetSpace(), mover:GetMoveSpeed(), mover:GetPathProf()))
+		--for _, curr in ipairs(reachable) do
+		for i = 1, #reachable do
+			local curr = reachable[i]
+			--LOG("---------------- iteration reachable")
+			ret:push_back(curr)
+		end
+
+		--LOG("---------------- B")
+
+		local moveSpeed = mover:GetMoveSpeed()
+		for j = 0, 7 do
+			for i = 0, 7 do
+				local curr = Point(i, j)
+				if isSawbladePos(curr) and isReachable(mover, curr) then
+					ret:push_back(curr)
+				end
+			end
+		end
+
+		return ret
+	end
+
+	return oldMove(self, p, ...)
+end
+
+--[[
+TODO:
+- handle undo move
+- make the logic for retrieving sawblade (add animation, set mission data)
+- what if the sawblade comes from another Mech?
+]]
+
+local oldMove = Move.GetSkillEffect
+function Move:GetSkillEffect(p1, p2, ...)
+	local mover = Board:GetPawn(p1)
+	if mover and isEquippedWithSawbladeLauncher(mover) and isSawbladePos(p2) then
+		local ret = SkillEffect()
+
+		local sawblade = Board:GetPawn(p2)
+
+		sawblade:SetSpace(Point(-1, -1))
+		--I need to maybe keep it alive if I undo move, no?
+
+		--[[
+		if Board:GetPawn(p2) ~= nil then
+			LOG("----------- Kill sawblade")
+			ret:AddScript(string.format("Board:GetPawn(%s):Kill()", p2:GetString()))
+
+		else
+			LOG("----------- WHAAAAAAT")
+		end
+		]]
+
+		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
+
+		ret:AddScript(string.format([[Board:AddAlert(%s, "SAWBLADE RETRIEVED")]], p2:GetString()))
+
+		--
+		
+		return ret
+	end
+
+	return oldMove(self, p1, p2, ...)
+end
+
+
+local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
+	LOG(pawn:GetMechName().." move was undone! Was at: "..undonePosition:GetString()..", returned to: "..pawn:GetSpace():GetString())
+	
+end
+
+modapiext.events.onPawnUndoMove:subscribe(EVENT_onPawnUndoMove)
 
 
 -----------------
@@ -46,7 +226,6 @@ truelch_GridMech = Pawn:new {
 	MoveSpeed = 4,
 	Image = "MechTritube",
 	ImageOffset = palette,
-	--ImageOffset = 9,
 	SkillList = { "truelch_GridShield", "truelch_GridDischarge" },
 	SoundLocation = "/enemy/bouncer_2/",
 	DefaultTeam = TEAM_PLAYER,
@@ -61,15 +240,27 @@ truelch_GridMech = Pawn:new {
 
 --Taken from Generic's Leaper (and changed to an event because why not)
 local function EVENT_onPawnGrappled(mission, pawn, isGrappled)
+	LOG("EVENT_onPawnGrappled")
 	if isGrappled and pawn:GetType() == "truelch_GridMech" then --If we're grappled and it's our truelch_GridMech
 		--If removing the web right away it looks really weird (try it if you want). So we'll wait about half a second with this
+
+		local oldTerrain = Board:GetTerrain(pawn:GetSpace())
+
 		modApi:scheduleHook(550, function()
 			local space = pawn:GetSpace() --Store the space so we can move it back later
 			Board:AddAlert(space, "WEB IMMUNE") --This will play an alert when it happens
 			--It's entirely optional, remove it if you don't like it
 			pawn:SetSpace(Point(-1, -1)) --Move the pawn to Point(-1,-1)
+
+			--Test
+			Board:SetTerrain(space, TERRAIN_ROAD)
+
 			modApi:runLater(function() --This runs a function one frame later so things get updated
 				pawn:SetSpace(space) --Move the pawn back, after that one frame. The web will be gone
+
+				modApi:runLater(function()
+					Board:SetTerrain(space, oldTerrain)
+				end)
 			end)
 		end)
 	end
@@ -123,7 +314,7 @@ local function computeGridMechProtecc(p1, se)
                 damageRedirected = damageRedirected + spaceDamage.iDamage
                 spaceDamage.iDamage = 0
                 spaceDamage.sImageMark = "combat/icons/icon_guard_glow.png" --moved the icon to the protected building
-                local id = proteccPawn:GetId()                
+                local id = proteccPawn:GetId()
 
                 if damageRedirected > 0 then
                     se:AddScript(string.format([[Board:AddAlert(%s, "Grid Protection")]], spaceDamage.loc:GetString()))
@@ -155,23 +346,6 @@ local function computeGridMechProtecc(p1, se)
     end
 end
 
-
---[[
---V2
-local function EVENT_onSkillEnd(mission, pawn, weaponId, p1, p2)
-	
-end
-
-local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
-	
-end
-
-modapiext.events.onSkillEnd:subscribe(EVENT_onSkillBuild)
-modapiext.events.onFinalEffectEnd:subscribe(EVENT_onFinalEffectBuild)
-]]
-
-
---V1
 local function EVENT_onSkillBuild(mission, pawn, weaponId, p1, p2, skillEffect)
 	computeGridMechProtecc(p1, skillEffect)
 end
@@ -183,37 +357,12 @@ end
 modapiext.events.onSkillBuild:subscribe(EVENT_onSkillBuild)
 modapiext.events.onFinalEffectBuild:subscribe(EVENT_onFinalEffectBuild)
 
-------------------------
---- Dislocation Mech ---
-------------------------
-
-truelch_DislocationMech = Pawn:new {
-	Name = "Dislocation Mech",
-	Class = "Ranged",
-	Health = 2,
-	MoveSpeed = 3,
-	Image = "MechArt",
-	ImageOffset = palette,
-	--ImageOffset = 9,
-	SkillList = { "truelch_RiftInducer" },
-	SoundLocation = "/enemy/burrower_2/",
-	DefaultTeam = TEAM_PLAYER,
-	ImpactMaterial = IMPACT_METAL,
-	Massive = true,
-}
-
---I didn't added that at first, but I might need that in the end
 local oldMove = Move.GetTargetArea
 function Move:GetTargetArea(p, ...)
 	local mover = Board:GetPawn(p)
 	if mover and mover:GetType() == "truelch_GridMech" then
-		--LOG("------- Grid Mech special move")
-
 		local ret = PointList()
-
 		local moveSpeed = mover:GetMoveSpeed()
-
-		--Test
 		for j = 0, 7 do
 			for i = 0, 7 do
 				local curr = Point(i, j)
@@ -229,7 +378,6 @@ function Move:GetTargetArea(p, ...)
 	return oldMove(self, p, ...)
 end
 
-
 local oldMove = Move.GetSkillEffect
 function Move:GetSkillEffect(p1, p2, ...)
 	local mover = Board:GetPawn(p1)
@@ -242,3 +390,22 @@ function Move:GetSkillEffect(p1, p2, ...)
 
 	return oldMove(self, p1, p2, ...)
 end
+
+------------------------
+--- Dislocation Mech ---
+------------------------
+
+truelch_DislocationMech = Pawn:new {
+	Name = "Dislocation Mech",
+	Class = "Ranged",
+	Health = 2,
+	MoveSpeed = 3,
+	Image = "MechArt",
+	ImageOffset = palette,
+	SkillList = { "truelch_RiftInducer" },
+	SoundLocation = "/enemy/burrower_2/",
+	DefaultTeam = TEAM_PLAYER,
+	ImpactMaterial = IMPACT_METAL,
+	Massive = true,
+}
+
