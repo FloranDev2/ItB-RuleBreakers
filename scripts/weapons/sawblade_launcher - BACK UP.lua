@@ -37,6 +37,14 @@ local function missionData()
 		mission.truelch_RuleBreakers = {}
 	end
 
+	--missionData().sawStatus[pawnId] =
+	-- NEW:
+	---> 0: sawblade is on the mech
+	---> 1: sawblade is not on the mech (there could be a living sawblade somewhere, or even multiple)
+	-- OLD:
+	---> 0: sawblade is on the mech
+	---> 1: sawblade is dead
+	---> <sawblade's id>: sawblade is alive! --> I'll ditch that so that any Sawblade launcher can target any Sawblade
 	if mission.truelch_RuleBreakers.sawStatus == nil then
 		mission.truelch_RuleBreakers.sawStatus = {}
 	end
@@ -44,9 +52,33 @@ local function missionData()
 	return mission.truelch_RuleBreakers
 end
 
+local function isVarNil(msg, var)
+	if var == nil then
+		LOG("----------- "..msg.." is nil :(")
+	else
+		LOG("----------- "..msg.." exists :)")
+	end
+end
+
+local function debugSawStatus()
+	LOG("debugSawStatus()")
+	LOG("tostring(missionData().sawStatus)): "..tostring(missionData().sawStatus))
+	--LOG("tostring(extract_table(missionData().sawStatus)): "..tostring(extract_table(missionData().sawStatus)))
+
+	--Simpler attempt:
+	for i = 0, 2 do
+		if missionData().sawStatus[i] ~= nil then
+			LOGF("missionData().sawStatus[%s] = %s", tostring(i), tostring(missionData().sawStatus[i]))
+		else
+			LOGF("missionData().sawStatus[%s] is nil!", tostring(i))
+		end
+	end
+end
+
 function truelch_addSawBlade(pawn)
 	if pawn == nil then return end
 	missionData().sawStatus[pawn:GetId()] = 0
+	debugSawStatus()
 end
 
 local function isSawbladePawn(pawn)
@@ -167,11 +199,55 @@ function truelch_SawbladeLauncher:GetTargetArea_Normal(point)
 	return ret
 end
 
+--[[
+function truelch_SawbladeLauncher:GetTargetArea_Normal_Old(point)
+	local ret = PointList()
+
+	local status = self:GetSawbladeStatus()
+
+	if status == 0 or status == 1 then
+		if diagonalLaunch then
+			for j = -self.Range, self.Range do
+				for i = -self.Range, self.Range do
+					local curr = point + Point(i, j)
+					if Board:IsValid(curr) then
+						ret:push_back(curr)
+					end
+				end
+			end
+		else
+			for dir = DIR_START, DIR_END do
+				for i = 1, self.Range do
+					local curr = point + DIR_VECTORS[dir]*i
+					ret:push_back(curr)
+				end
+			end
+		end		
+	elseif status == 1 then
+		--Sawblade is dead: need to recreate it
+		ret:push_back(point)
+	elseif status == -1 or status == nil then
+		--Error
+		LOG("status is nil or equals to -1")
+	else
+		--Sawblade is alive
+		local sawblade = Board:GetPawn(status)
+		if sawblade ~= nil then
+			ret:push_back(sawblade:GetSpace())
+		else
+			LOG("WTF! Sawblade is nil while it should exist and be alive")
+		end
+	end
+	
+	return ret
+end
+]]
+
 function truelch_SawbladeLauncher:GetTargetArea_TipImage(point)
 	local ret = PointList()
 
 	for j = 0, 7 do
-		for i = 0, 7 do
+		for j = 0, 7 do
 			local curr = Point(i, j)
 			ret:push_back(curr)
 		end
@@ -180,6 +256,11 @@ function truelch_SawbladeLauncher:GetTargetArea_TipImage(point)
 	return ret
 end
 
+--What does the following do again?
+--spaceDamage.bKO_Effect = true --??
+
+-- mission().sawStatus
+-- 0: Sawblade on the Mech
 function truelch_SawbladeLauncher:GetTargetArea(point)
 	if not Board:IsTipImage() then
 		return self:GetTargetArea_Normal(point)
@@ -239,14 +320,28 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 end
 
 
-local function distancePointLine(px, py, x1, y1, x2, y2)
+-- Fonction pour calculer la distance entre un point (px, py) et une ligne définie par deux points (x1, y1) et (x2, y2)
+local function distancePointLigne(px, py, x1, y1, x2, y2)
+	-- Calcul des coefficients de la ligne
 	local A = y2 - y1
 	local B = x1 - x2
 	local C = x2 * y1 - x1 * y2
 
+	-- Calcul de la distance
 	local distance = math.abs(A * px + B * py + C) / math.sqrt(A^2 + B^2)
 	return distance
 end
+
+--[[
+-- Exemple d'utilisation
+local px, py = 3, 4 -- Coordonnées du point
+local x1, y1 = 1, 1 -- Coordonnées du premier point de la ligne
+local x2, y2 = 5, 1 -- Coordonnées du deuxième point de la ligne
+
+local dist = distancePointLigne(px, py, x1, y1, x2, y2)
+LOG("La distance entre le point et la ligne est: " .. dist)
+]]
+
 
 local function computeLine(ret, p1, p2)
 	--LOGF("----------- computeLine(p1: %s, p2: %s)", p1:GetString(), p2:GetString())
@@ -265,17 +360,24 @@ local function computeLine(ret, p1, p2)
 			ret:AddDamage(damage)
 		end
 	else
+		--LOG("----------- Diagonal")
 		local iMin = math.min(p1.x, p2.x)
 		local iMax = math.max(p1.x, p2.x)
 
 		local jMin = math.min(p1.y, p2.y)
 		local jMax = math.max(p1.y, p2.y)
 
+		--LOGF("iMin: %s, iMax: %s, jMin: %s, jMax: %s", tostring(iMin), tostring(iMax), tostring(jMin), tostring(jMax))
+
 		for j = jMin, jMax do
 			for i = iMin, iMax do
 				local curr = Point(i, j)
-				if curr ~= p1 and curr ~= p2 then					
-					local dist = distancePointLine(curr.x, curr.y, p1.x, p1.y, p2.x, p2.y)
+				if curr ~= p1 and curr ~= p2 then
+					
+					--local dist = DistFromLine(curr, p1, p2, iMin, iMax, jMin, jMax)
+					local dist = distancePointLigne(curr.x, curr.y, p1.x, p1.y, p2.x, p2.y)
+					--LOG("----------- dist: "..tostring(dist))
+
 					local dmg = 0
 
 					if dist <= 0.1 then
@@ -286,8 +388,18 @@ local function computeLine(ret, p1, p2)
 						dmg = 1
 					end
 
+					--LOG(string.format("curr: %s, dist: %s -> dmg: %s", curr:GetString(), tostring(dist), tostring(dmg)))
+
 					local damage = SpaceDamage(curr, dmg)
 					ret:AddDamage(damage)
+
+					--LOG("----------- END")
+
+					--[[
+					if dist <= 1 and curr ~= p1 and curr ~= p2 then
+						table.insert(linePoints, curr)
+					end
+					]]
 				end
 			end
 		end
@@ -341,7 +453,10 @@ end
 
 function truelch_SawbladeLauncher:GetSkillEffect_Normal(p1, p2)
 	local ret = SkillEffect()
+
 	local status = self:GetSawbladeStatus()
+
+	--LOG("truelch_SawbladeLauncher:GetSkillEffect -> status: "..tostring(status))
 
 	if status == nil or status == -1 then --error!
 		LOG("----------- return error")
@@ -364,6 +479,41 @@ function truelch_SawbladeLauncher:GetSkillEffect_Normal(p1, p2)
 	return ret
 end
 
+--[[
+function truelch_SawbladeLauncher:GetSkillEffect_Normal_Old(p1, p2)
+	local ret = SkillEffect()
+
+	local status = self:GetSawbladeStatus()
+
+	--LOG("truelch_SawbladeLauncher:GetSkillEffect -> status: "..tostring(status))
+
+	if status == nil or status == -1 then --error!
+		LOG(" ----------- return error")
+		return ret --maybe we should attempt to rebuild the sawblade in that case?
+	end
+
+	if status == 0 then
+		--sawblade is on the mech
+		--LOG(" ----------- sawblade is on the mech")
+		return self:LaunchSawblade(p1, p2)
+	elseif status == 1 then
+		--sawblade is dead
+		--LOG(" ----------- sawblade is dead")
+		return self:RebuildSawblade(p1, p2)
+	else
+		--sawblade is on the board and still alive!
+		--in that case, status is actually the sawblade's id!
+		--LOG(" ----------- sawblade is alive!")
+		return self:ReturnSawblade(p1, p2)
+	end
+
+	LOG(" ----------- wait... what??")
+
+	--Should not be needed
+	return ret
+end
+]]
+
 function truelch_SawbladeLauncher:GetSkillEffect_TipImage(p1, p2)
 	local ret = SkillEffect()
 
@@ -384,11 +534,17 @@ end
 local function EVENT_onMissionStarted(mission)
 	for i = 0, 2 do
 		local mech = Board:GetPawn(i)
+		
+		--Returns true if the pawn has powered a weapon of type weapon or a less powered variant of it. false otherwise.
+		--just using mech:IsWeaponPowered("truelch_SawbladeLauncher_AB") did NOT work with base version, unlike what documentation described.
 		if mech ~= nil and (mech:IsWeaponPowered("truelch_SawbladeLauncher") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_A") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_B") or
-				mech:IsWeaponPowered("truelch_SawbladeLauncher_AB")) then
+				mech:IsWeaponPowered("truelch_SawbladeLauncher_AB")) then --this should be the only one required but it didn't work for the base weapon
+			--LOG(" -----> "..mech:GetMechName().." is equipped with a Sawblade launcher")
 			truelch_addSawBlade(mech)
+		else
+			--LOG(" -----> not equipped with sawblade launcher")
 		end
 	end
 end
@@ -408,12 +564,20 @@ local function EVENT_onPawnKilled(mission, pawn)
 end
 
 local function EVENT_onSkillEnd(mission, pawn, weaponId, p1, p2)
-    if type(weaponId) == 'table' then weaponId = weaponId.__Id end
+
+    if type(weaponId) == 'table' then
+        weaponId = weaponId.__Id
+    end
 
 	if weaponId == "truelch_SawbladeLauncher" or
 			weaponId == "truelch_SawbladeLauncher_A" or
 			weaponId == "truelch_SawbladeLauncher_B" or
 			weaponId == "truelch_SawbladeLauncher_AB" then
+		--LOGF("---------- Launcher registered: %s, id: %s", pawn:GetMechName(), tostring(pawn:GetId()))
+
+		--Do NOT attempt to save the pawn. Save the id instead for example
+		--https://discord.com/channels/417639520507527189/418142041189646336/1335038444090691626
+		--missionData().lastLauncher = pawn
 		missionData().lastLauncher = pawn:GetId()
 	end
 end
@@ -426,6 +590,7 @@ local function EVENT_onPawnTracked(mission, pawn)
 
 	if isSawbladePawn(pawn) and missionData().lastLauncher ~= nil then
 		local launcherId = missionData().lastLauncher
+		--missionData().sawStatus[launcherId] = pawn:GetId() --old, we want all sawblade launcher to use any sawblade on the terrain
 		missionData().sawStatus[launcherId] = 1
 	end
 end

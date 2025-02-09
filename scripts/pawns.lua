@@ -60,7 +60,7 @@ truelch_SawbladeMech = Pawn:new {
 	MoveSpeed = 4, --idea: 3 + 1 if the sawblade isn't on the mech?
 	Image = "MechPierce",
 	ImageOffset = palette,
-	SkillList = { "truelch_SawbladeLauncher" --[[, "truelch_debug_weapon"]] },
+	SkillList = { "truelch_SawbladeLauncher", "truelch_debug_weapon" },
 	SoundLocation = "/mech/brute/pierce_mech/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
@@ -83,51 +83,25 @@ end
 The idea is that if the sawblade's pos is adjacent to a tile in the path
 ]]
 local function isReachable(pawn, sawbladePos)
-	--LOG(" ============= isReachable() =============")
 	local moveSpeed = pawn:GetMoveSpeed()
-	--LOG("------------ moveSpeed: "..tostring(moveSpeed))
 	local reachable = extract_table(Board:GetReachable(pawn:GetSpace(), pawn:GetMoveSpeed(), pawn:GetPathProf()))
-
 	for i = 1, #reachable do
-		--LOG("------------ i: "..tostring(i))
 		local pos = reachable[i]
-		--LOG("------------ pos: "..pos:GetString())		
-
 		local yes = false
 		for dir = DIR_START, DIR_END do
-			--LOG("------------ dir: "..tostring(dir))
 			local adj = pos + DIR_VECTORS[dir]
-			--LOG("------------ adj: "..adj:GetString())
 			if adj == sawbladePos then
-				--LOG("------------ yes!")
 				yes = true
 			end
 		end
 
 		--Compute point distance
-		--local path = Board:GetPath(pawn:GetSpace(), pos, pawn:GetPathProf()):size()
 		local dist = Board:GetPath(pawn:GetSpace(), pos, pawn:GetPathProf()):size()
-		--Maybe I can get the length of the path
-		--dist = #path --no
-
-		--[[
-		for i = 1, #reachable do
-			local pathPoint = reachable[i]
-			LOG("------------ dist = dist + 1")
-			dist = dist + 1
-		end	
-		]]	
-
-		--LOG("------------ dist: "..tostring(dist))
 
 	    if dist + 1 <= moveSpeed and yes then
-	    	--LOG("------------ return true")
 	    	return true
 	    end
 	end
-
-	--LOG("------------ return false")
-
 	return false
 end
 
@@ -136,19 +110,14 @@ local oldMove = Move.GetTargetArea
 function Move:GetTargetArea(p, ...)	
 	local mover = Board:GetPawn(p)
 	if mover and isEquippedWithSawbladeLauncher(mover) then
-
-		--LOG("---------------- A")
 		local ret = PointList()
+
 		--Add original move
 		local reachable = extract_table(Board:GetReachable(mover:GetSpace(), mover:GetMoveSpeed(), mover:GetPathProf()))
-		--for _, curr in ipairs(reachable) do
 		for i = 1, #reachable do
 			local curr = reachable[i]
-			--LOG("---------------- iteration reachable")
 			ret:push_back(curr)
 		end
-
-		--LOG("---------------- B")
 
 		local moveSpeed = mover:GetMoveSpeed()
 		for j = 0, 7 do
@@ -178,29 +147,15 @@ function Move:GetSkillEffect(p1, p2, ...)
 	local mover = Board:GetPawn(p1)
 	if mover and isEquippedWithSawbladeLauncher(mover) and isSawbladePos(p2) then
 		local ret = SkillEffect()
-
-		local sawblade = Board:GetPawn(p2)
-
-		sawblade:SetSpace(Point(-1, -1))
-		--I need to maybe keep it alive if I undo move, no?
-
-		--[[
-		if Board:GetPawn(p2) ~= nil then
-			LOG("----------- Kill sawblade")
-			ret:AddScript(string.format("Board:GetPawn(%s):Kill()", p2:GetString()))
-
-		else
-			LOG("----------- WHAAAAAAT")
-		end
-		]]
-
+		--I can't move the sawblade to (-1, -1) after the move, the mech just can't reach the tile
+		ret:AddScript(string.format("Board:GetPawn(%s):SetSpace(Point(-1, -1))", p2:GetString()))
 		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
-
 		ret:AddScript(string.format([[Board:AddAlert(%s, "SAWBLADE RETRIEVED")]], p2:GetString()))
-
-		--
-		
+		ret:AddScript(string.format([[missionData().sawStatus[%s] = 0)]], tostring(mover:GetId())))
+		ret:AddScript(string.format([[missionData().lastMovePawnId = %s]], tostring(mover:GetId())))
 		return ret
+	else
+		ret:AddScript("missionData().lastMovePawnId = nil")
 	end
 
 	return oldMove(self, p1, p2, ...)
@@ -209,7 +164,30 @@ end
 
 local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
 	LOG(pawn:GetMechName().." move was undone! Was at: "..undonePosition:GetString()..", returned to: "..pawn:GetSpace():GetString())
-	
+
+	if not pawn:IsMech() or not isEquippedWithSawbladeLauncher(pawn) or
+			missionData().sawStatus[pawn:GetId()] == nil or
+			missionData().lastMovePawnId == nil then
+		LOG("EVENT_onPawnUndoMove -> check return")
+		return
+	end
+
+	local status = missionData().sawStatus[pawn:GetId()]
+
+	LOG("EVENT_onPawnUndoMove -> status: "..tostring(status))
+
+	if status <= 1 then
+		return
+	end
+
+	local sawblade = Board:GetPawn(undonePosition)
+
+	if pawn == Board:GetPawn(missionData().lastMovePawnId) then
+		--Are status (acid, fire, etc.) removed after being placed in (-1, -1)?
+		sawblade:SetSpace(undonePosition)
+
+		mission.truelch_RuleBreakers.sawStatus[pawn:GetId()] = 1
+	end
 end
 
 modapiext.events.onPawnUndoMove:subscribe(EVENT_onPawnUndoMove)
@@ -408,4 +386,3 @@ truelch_DislocationMech = Pawn:new {
 	ImpactMaterial = IMPACT_METAL,
 	Massive = true,
 }
-

@@ -29,10 +29,16 @@ function truelch_debug_weapon:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
 
 	--LOGF("At: "..)
+	--[[
 	local building = Board:GetUniqueBuilding(p2)
 	if building ~= nil and building ~= "" then
 		Board:AddAlert(p2, tostring(building))
 	end
+	]]
+
+	local damage = SpaceDamage(p2, 0)
+	damage.iAcid = EFFECT_CREATE
+	ret:AddDamage(damage)
 
 	return ret
 end
