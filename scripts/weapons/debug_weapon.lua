@@ -28,7 +28,6 @@ end
 function truelch_debug_weapon:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
 
-	--LOGF("At: "..)
 	--[[
 	local building = Board:GetUniqueBuilding(p2)
 	if building ~= nil and building ~= "" then
@@ -36,9 +35,36 @@ function truelch_debug_weapon:GetSkillEffect(p1, p2)
 	end
 	]]
 
-	local damage = SpaceDamage(p2, 0)
-	damage.iAcid = EFFECT_CREATE
-	ret:AddDamage(damage)
+	if Board:IsAcid(p2) then
+	--if Board:IsFire(p2) then
+	--if Board:IsSmoke(p2) then
+	--if Board:IsShield(p2) then
+		local damage = SpaceDamage(p2, 0)
+		--damage.iAcid = EFFECT_REMOVE --doesn't work
+		damage.iAcid = -2
+		--ret:AddScript("Board:SetAcid("..p2:GetString()..", false)")
+
+		--damage.iFire = EFFECT_REMOVE --works
+		--damage.iSmoke = EFFECT_REMOVE --works
+
+		--damage.IsShield = EFFECT_REMOVE --doesn't work
+		--Board:SetShield(false)
+		--ret:AddScript("Board:SetShield("..p2:GetString()..", false)")
+
+		ret:AddDamage(damage)
+		LOG("------------ EFFECT_REMOVE")
+	else
+		local damage = SpaceDamage(p2, 0)
+		damage.iAcid = EFFECT_CREATE
+		--damage.iFire = EFFECT_CREATE
+		--damage.iSmoke = EFFECT_CREATE
+
+		--damage.iShield = EFFECT_CREATE
+		--damage:SetShield(p2, true) --unnecessary
+
+		ret:AddDamage(damage)
+		--LOG("------------ EFFECT_CREATE")
+	end
 
 	return ret
 end

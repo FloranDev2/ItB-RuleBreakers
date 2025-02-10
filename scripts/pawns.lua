@@ -46,6 +46,18 @@ local function missionData()
 		mission.truelch_RuleBreakers.sawStatus = {}
 	end
 
+	--[[
+	List of pairs of pawns: first is the mech and second is the sawblade
+	Example:
+	missionData().retrMoveData = { { 0, 110 }, { 1, 127 } }
+	Here, the pawn at id 0 (first mech) equipped with a sawblade moved to the position of a sawblade that has an id of 110
+	Then, the pawn at id 1 (second mech) also equipped with a sawblade launcher moved to the position of a sawblade that has an id of 127
+	Note that any mech equipped by a sawblade launcher can retrieve any sawblade (so you can retrieve sawblades launched by other mechs)
+	]]
+	if mission.truelch_RuleBreakers.retrMoveData == nil then
+		mission.truelch_RuleBreakers.retrMoveData = {}
+	end
+
 	return mission.truelch_RuleBreakers
 end
 
@@ -74,9 +86,30 @@ local function isEquippedWithSawbladeLauncher(mech)
 		mech:IsWeaponPowered("truelch_SawbladeLauncher_AB"))
 end
 
-local function isSawbladePos(curr)
+local function isSawbladePos(curr, showLogs)
 	local pawn = Board:GetPawn(curr)
-	return pawn ~= nil and (pawn:GetType() == "truelch_Sawblade" or pawn:GetType() == "truelch_Sawblade_A")
+
+	if showLogs == true then
+		LOG("------------ isSawbladePos")
+		local cond1 = pawn ~= nil
+		if pawn ~= nil then
+			LOG("------------ cond1 pawn exists -> pawn type: "..pawn:GetType())
+			local cond2 = pawn:GetType() == "truelch_Sawblade"
+			local cond3 = pawn:GetType() == "truelch_Sawblade_A"
+			LOG("------------ cond2: "..tostring(cond2))
+			LOG("------------ cond3: "..tostring(cond3))
+		else
+			LOG("------------ pawn is nil!")
+		end
+	end
+
+	local ret = pawn ~= nil and (pawn:GetType() == "truelch_Sawblade" or pawn:GetType() == "truelch_Sawblade_A")
+
+	if showLogs == true then
+		LOG("------------ ret: "..tostring(ret))
+	end
+
+	return ret
 end
 
 --[[
@@ -109,7 +142,10 @@ end
 local oldMove = Move.GetTargetArea
 function Move:GetTargetArea(p, ...)	
 	local mover = Board:GetPawn(p)
-	if mover and isEquippedWithSawbladeLauncher(mover) then
+
+	local status = missionData().sawStatus[mover:GetId()]
+
+	if mover and isEquippedWithSawbladeLauncher(mover) and (status == nil or status ~= 0) then
 		local ret = PointList()
 
 		--Add original move
@@ -142,20 +178,55 @@ TODO:
 - what if the sawblade comes from another Mech?
 ]]
 
+--Arguments
+--[[
+local truelch_testMover_p1 = nil --p1
+local truelch_testMover_p2 = nil --p2
+]]
+local truelch_testMover_mover = nil --mover
+local truelch_testMover_sawblade = nil --sawbladehttps://www.twitch.tv/tastelesstv
+
+function truelch_testMover()
+	LOG("truelch_testMover()")
+	--[0] -> mech's id / [1] -> sawblade's id
+	table.insert(missionData().retrMoveData, { truelch_testMover_mover:GetId(), truelch_testMover_sawblade:GetId() } )
+
+	--LOG("save_table(GetCurrentMission().truelch_RuleBreakers)") --for the console in-game
+	--LOG("TEST -> lastMovePawnId: "..tostring(missionData().lastMovePawnId))
+end
+
+function truelch_testMover2()
+	missionData().sawStatus[truelch_testMover_mover:GetId()] = 0
+end
+
 local oldMove = Move.GetSkillEffect
 function Move:GetSkillEffect(p1, p2, ...)
 	local mover = Board:GetPawn(p1)
+	local ret = SkillEffect()
+
 	if mover and isEquippedWithSawbladeLauncher(mover) and isSawbladePos(p2) then
-		local ret = SkillEffect()
-		--I can't move the sawblade to (-1, -1) after the move, the mech just can't reach the tile
+		truelch_testMover_mover = mover
+		truelch_testMover_sawblade = Board:GetPawn(p2)
+		ret:AddScript("truelch_testMover()")
+
 		ret:AddScript(string.format("Board:GetPawn(%s):SetSpace(Point(-1, -1))", p2:GetString()))
 		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
 		ret:AddScript(string.format([[Board:AddAlert(%s, "SAWBLADE RETRIEVED")]], p2:GetString()))
-		ret:AddScript(string.format([[missionData().sawStatus[%s] = 0)]], tostring(mover:GetId())))
-		ret:AddScript(string.format([[missionData().lastMovePawnId = %s]], tostring(mover:GetId())))
+		--ret:AddScript(string.format(
+		--	[[
+		--	LOG("BEFORE saw status")
+		--	missionData().sawStatus[%s] = 0 --I think the issue is that missionData() is local
+		--	LOG("AFTER saw status")
+		--	]], tostring(mover:GetId())))
+
+		ret:AddScript("truelch_testMover2()")
+
+		LOG("------------------ success")
 		return ret
 	else
-		ret:AddScript("missionData().lastMovePawnId = nil")
+		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
+		--LOG("------------------ failure")
+		return ret
 	end
 
 	return oldMove(self, p1, p2, ...)
@@ -163,30 +234,73 @@ end
 
 
 local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
-	LOG(pawn:GetMechName().." move was undone! Was at: "..undonePosition:GetString()..", returned to: "..pawn:GetSpace():GetString())
+	--LOG(pawn:GetMechName().." move was undone! Was at: "..undonePosition:GetString()..", returned to: "..pawn:GetSpace():GetString())
 
-	if not pawn:IsMech() or not isEquippedWithSawbladeLauncher(pawn) or
-			missionData().sawStatus[pawn:GetId()] == nil or
-			missionData().lastMovePawnId == nil then
+	-- DEBUG --->
+	--LOG("------------------ check -> pawn:IsMech(): "..tostring(pawn:IsMech()))
+	--LOG("------------------ check -> is equipped: "..tostring(isEquippedWithSawbladeLauncher(pawn)))
+	--LOG("------------------ check -> status: "..tostring(missionData().sawStatus[pawn:GetId()]))
+	-- <--- DEBUG
+
+	if not pawn:IsMech()
+			or not isEquippedWithSawbladeLauncher(pawn)
+			or missionData().sawStatus[pawn:GetId()] == nil then
 		LOG("EVENT_onPawnUndoMove -> check return")
 		return
 	end
 
+	--TODO: what if the mech already has a sawblade on it?
+
+	--[[
+	status:
+	- nil: error
+	- 0: sawblade is on the mech
+	- 1: no sawblade on the mec
+	- >= 1: not used anymore
+	]]
+
 	local status = missionData().sawStatus[pawn:GetId()]
+	--LOG("------------------ status: "..tostring(status))
 
-	LOG("EVENT_onPawnUndoMove -> status: "..tostring(status))
-
-	if status <= 1 then
+	if status == 1 then
+		--LOG("------------------ status == 1 (meaning that we don't actually have a sawblade)")
 		return
 	end
 
-	local sawblade = Board:GetPawn(undonePosition)
+	--LOG(save_table(GetCurrentMission().truelch_RuleBreakers.retrMoveData)) --for the console in-game
 
-	if pawn == Board:GetPawn(missionData().lastMovePawnId) then
-		--Are status (acid, fire, etc.) removed after being placed in (-1, -1)?
-		sawblade:SetSpace(undonePosition)
+	-- CHECK --->
+	if missionData().retrMoveData == nil then
+		--LOG("------------------ missionData().retrMoveData == nil :(")
+		return
+	end
 
-		mission.truelch_RuleBreakers.sawStatus[pawn:GetId()] = 1
+	local count = 0
+	for _ in pairs(missionData().retrMoveData) do
+		count = count + 1
+	end
+
+	--LOG("------------------ count: "..tostring(count))
+
+	if count == 0 then
+		return
+	end
+	-- <--- CHECK
+
+	local mechId = missionData().retrMoveData[count][1]
+	local sawbId = missionData().retrMoveData[count][2]
+
+	local mech = Board:GetPawn(mechId)
+	local sawb = Board:GetPawn(sawbId)
+
+	if pawn:GetId() == mech:GetId() and
+			mech ~= nil and
+			sawb ~= nil then
+		sawb:SetSpace(undonePosition)
+		missionData().sawStatus[pawn:GetId()] = 1
+
+		--Remove
+		table.remove(missionData().retrMoveData, count) --table.getn(missionData().retrMoveData) --would this work?		
 	end
 end
 
@@ -211,7 +325,6 @@ truelch_GridMech = Pawn:new {
 	Massive = true,
 	Flying = true, --not really necessary in the end?
 	IgnoreSmoke = true,
-	--WebImmune = true, --I think you need to do it by script
 	Pushable = false, --maybe?
 	--Corpse = false, --test?
 }
@@ -322,7 +435,56 @@ local function computeGridMechProtecc(p1, se)
             end
         end
     end
+
+    --Queued effects
+    ---> doesn't work
+    for i = 1, se.q_effect:size() do
+        local damageRedirected = 0
+        local spaceDamage = se.q_effect:index(i)
+        
+        if spaceDamage.iDamage > 0 and Board:IsBuilding(spaceDamage.loc) then
+        	--LOG("-------------- spaceDamage.loc: "..spaceDamage.loc:GetString())
+        	local origin = spaceDamage.loc
+            local proteccPawn = Board:GetPawn(origin)
+
+            if proteccPawn ~= nil and proteccPawn:GetType() == "truelch_GridMech" then
+            	--LOG("-------------- Protected by a Grid Mech!")
+                damageRedirected = damageRedirected + spaceDamage.iDamage
+                spaceDamage.iDamage = 0
+                spaceDamage.sImageMark = "combat/icons/icon_guard_glow.png" --moved the icon to the protected building
+                local id = proteccPawn:GetId()
+
+                if damageRedirected > 0 then
+                    se:AddScript(string.format([[Board:AddAlert(%s, "Grid Protection")]], spaceDamage.loc:GetString()))
+                	--V1
+                	--local redir = SpaceDamage(spaceDamage.loc, damageRedirected)
+                	--se:AddDamage(redir)
+
+                	--V2: Add safe damage (+ trying to apply it on a different space)                                        
+                    local testSpace = getProteccSpace()
+                    --local testSpace = Point(-1, -1)
+                    local redir = SpaceDamage(testSpace, damageRedirected)
+                    redir.sImageMark = "combat/icons/icon_resupply.png"
+                    redir.bHide = true
+
+                    --LOG(string.format("-------------- Before: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
+                    
+                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), testSpace:GetString()))
+                	se:AddSafeDamage(redir)
+                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), origin:GetString()))
+
+                    --LOG(string.format("-------------- After: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
+
+                    --V3: Pawn:ApplyDamage()
+                    --https://github.com/itb-community/ITB-ModLoader/wiki/Pawn#applyDamage
+                    --se:AddScript(string.format("Board:GetPawn(%s):ApplyDamage(SpaceDamage(%s, %s))", spaceDamage.loc:GetString(), spaceDamage.loc:GetString(), tostring(damageRedirected)))
+                end
+            end
+        end
+    end
 end
+
+--TODO: add events for queued effects!
 
 local function EVENT_onSkillBuild(mission, pawn, weaponId, p1, p2, skillEffect)
 	computeGridMechProtecc(p1, skillEffect)
@@ -380,7 +542,7 @@ truelch_DislocationMech = Pawn:new {
 	MoveSpeed = 3,
 	Image = "MechArt",
 	ImageOffset = palette,
-	SkillList = { "truelch_RiftInducer" },
+	SkillList = { "truelch_RiftInducer", "truelch_debug_weapon" },
 	SoundLocation = "/enemy/burrower_2/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,

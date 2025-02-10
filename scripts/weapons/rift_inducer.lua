@@ -29,6 +29,7 @@ local function isRiftExc(pawn)
 
 	for _, rEx in ipairs(riftPawnExceptions) do
 		if pawn:GetType() == rEx then
+			LOG("rift pawn exception: "..pawn:GetType())
 			return true
 		end
 	end
@@ -60,6 +61,10 @@ truelch_RiftInducer = Skill:new{
 	Upgrades = 2,
 	UpgradeCost = { 1, 2 },
 
+	--Decision
+	SwapGuard = true, --todo
+	SwapSmoke = false,
+
 	--Gameplay
 	TwoClick = true,
 	Damage = 0,
@@ -73,7 +78,7 @@ truelch_RiftInducer = Skill:new{
 	--Tip image
 	TipImage = {
 		Unit     = Point(2, 3),
-		Enemy    = Point(2, 1),
+		Enemy1   = Point(2, 1),
 		Queued1  = Point(1, 1),
 		Building = Point(1, 1),
 		Target   = Point(2, 1),
@@ -90,16 +95,51 @@ Weapon_Texts.truelch_RiftInducer_Upgrade2 = "Confusion"
 truelch_RiftInducer_A = truelch_RiftInducer:new{
 	UpgradeDescription = "Swap range increased by one.",
 	SecondTargetRange = 2,
+
+	TipImage = {
+		Unit     = Point(2, 3),
+		Enemy1   = Point(2, 1),
+		Queued1  = Point(0, 1),
+		Building = Point(0, 1),
+		Target   = Point(2, 1),
+		Second_Click = Point(0, 1),
+		CustomEnemy = "Scarab1",
+		CustomPawn = "truelch_DislocationMech"
+	}
 }
 
 truelch_RiftInducer_B = truelch_RiftInducer:new{
 	UpgradeDescription = "Confuse vek swapped by this weapon, flipping their attack direction.",
 	Confuse = true,
+
+	TipImage = {
+		Unit     = Point(2, 3),
+		Enemy1   = Point(2, 1),
+		Enemy2   = Point(3, 0),
+		Queued1  = Point(1, 1),
+		Building = Point(1, 1),
+
+		Target       = Point(2, 1),
+		Second_Click = Point(2, 0),
+		CustomPawn = "truelch_DislocationMech"
+	}
 }
 
 truelch_RiftInducer_AB = truelch_RiftInducer:new{	
 	SecondTargetRange = 2,
 	Confuse = true,
+
+	TipImage = {
+		Unit     = Point(2, 4),
+		Enemy1   = Point(2, 2),
+		Enemy2   = Point(3, 0),
+		Queued1  = Point(1, 2),
+		Building = Point(1, 2),
+
+		Target       = Point(2, 2),
+		Second_Click = Point(2, 0),
+		CustomPawn = "truelch_DislocationMech"
+	}
 }
 
 function truelch_RiftInducer:GetTargetArea(point)
@@ -161,9 +201,54 @@ function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
 	return ret
 end
 
+--[[
+pA might not even be needed after all...
+
+pA = p2 and pB = p3
+or
+pA = p3 and pB = p2
+]]
+function truelch_RiftInducer:ComputeTile(ret, damage, pA, pB)
+	if Board:IsAcid(pB) then
+		--damage.iAcid = EFFECT_CREATE
+	else
+		--LOG("------------ here")
+		--damage.iAcid = EFFECT_REMOVE --doesn't work
+		ret:AddScript("Board:SetAcid("..pB:GetString()..", false)")
+	end
+
+	---Fire
+	if Board:IsFire(pB) then
+		damage.iFire = EFFECT_CREATE
+	else
+		damage.iFire = EFFECT_REMOVE
+	end
+
+	---Shield
+	if Board:IsShield(pB) then
+		damage.iShield = EFFECT_CREATE
+	else
+		--damage.iShield = EFFECT_REMOVE --doesn't work
+		ret:AddScript("Board:SetShield("..pB:GetString()..", false)")
+	end
+
+	if self.SwapSmoke then
+		if Board:IsSmoke(pB) then
+			damage.iSmoke = EFFECT_CREATE
+		else
+			damage.iSmoke = EFFECT_REMOVE
+		end
+	end
+
+	--[[
+	TODO:
+	- crack (not literally, come on)
+	]]
+end
+
 function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
-	--local ret = self:GetSkillEffect(p1, p2)	
-	local ret = SkillEffect()
+	--local ret = self:GetSkillEffect(p1, p2)
+	local ret = SkillEffect() --we want to ditch previous stuff, they were just for preview
 
 	--ARTILLERY SHOTS
 	local first_damage = SpaceDamage(p2, self.Damage)
@@ -189,17 +274,22 @@ function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
 	local currHealth3 = Board:GetHealth(p3)
 	local maxHealth3 = Board:GetHealth(p3)
 
-	--rift_unit.png
+	---- P2 ----
 	local riftAnim2 = SpaceDamage(p2, 0)
-	--riftAnim2.sAnimation = "rift_unit"
-	riftAnim2.sAnimation = "RiftUnit"
-	--riftAnim2.sAnimation = "ExploAcid1"
+	--riftAnim2.sAnimation = "RiftUnit"	
 	riftAnim2.sSound = "/weapons/swap"
+	--Remove statuses from other tile
+	--Add statuses from other tile
+	self:ComputeTile(ret, riftAnim2, p2, p3)
 	ret:AddDamage(riftAnim2)
 
+	---- P3 ----
 	local riftAnim3 = SpaceDamage(p3, 0)
-	riftAnim3.sAnimation = "rift_unit"
-	--riftAnim3.sAnimation = "ExploAcid1"
+	--riftAnim3.sAnimation = "rift_unit"
+	--riftAnim2.sSound = "/weapons/swap" --no need to play the sound twice
+	--Remove statuses from other tile	
+	--Add statuses from other tile
+	self:ComputeTile(ret, riftAnim3, p3, p2)
 	ret:AddDamage(riftAnim3)
 
 	ret:AddScript(string.format("Board:SetTerrain(%s, %s)",    p2:GetString(), tostring(tile3)))

@@ -21,7 +21,8 @@ truelch_GridShield = Skill:new{
 		Unit       = Point(2, 3),
 		Building   = Point(2, 2),
 		Building2  = Point(2, 3),
-		Enemy      = Point(2, 1),
+		Enemy1     = Point(2, 1),
+		Queued1    = Point(2, 2),
 		Target     = Point(2, 2),
 		CustomPawn = "truelch_GridMech"
 	}
