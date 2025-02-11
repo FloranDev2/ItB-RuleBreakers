@@ -438,25 +438,15 @@ local function fooProtecc(pawn, se, effects, isQueued)
 	                    se:AddScript(string.format([[Board:AddAlert(%s, "Grid Protection")]], spaceDamage.loc:GetString()))                                  
 	                    local testSpace = getProteccSpace()
 	                    local redir = SpaceDamage(testSpace, damageRedirected)
+	                    redir.sImageMark = "combat/icons/icon_resupply.png"
 	                    redir.bHide = true                   
 	                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), testSpace:GetString()))
 	                	se:AddSafeDamage(redir)
 	                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), origin:GetString()))
                 	else
-                		--[[
-						missionData().proteccData = {
-							[107] = { --Firefly's id
-								[1] = 2 --x
-								[2] = 4 --y
-								[3] = 1 --damage value
-							}
-						}
-						]]
-
-                		--TODO / WIP
                 		--Add all damage (it can be an AoE!)
                 		--missionData().proteccData[pawn:GetId()]
-						table.insert(missionData().proteccData[pawn:GetId()], { loc.x, loc.y, damageRedirected)
+						table.insert(missionData().proteccData[pawn:GetId()], line)
                 	end
 
                 end
@@ -469,6 +459,109 @@ local function computeGridMechProtecc(pawn, se)
 	if se == nil then return end
 	fooProtecc(pawn, se, se.effect,   false)
 	fooProtecc(pawn, se, se.q_effect, true)
+end
+
+local function computeGridMechProtecc_Old(p1, se)
+	--LOG("=================== computeGridMechProtecc ===================")
+	if se == nil or se.effect == nil then return end
+
+	--took that safety from my hell breachers protecc
+    if not se.q_effect:empty() then
+        --LOG("HERE!!! queued effect detected")
+        return
+    end
+
+    for i = 1, se.effect:size() do
+        local damageRedirected = 0
+        local spaceDamage = se.effect:index(i)
+        
+        if spaceDamage.iDamage > 0 and Board:IsBuilding(spaceDamage.loc) then
+        	--LOG("-------------- spaceDamage.loc: "..spaceDamage.loc:GetString())
+        	local origin = spaceDamage.loc
+            local proteccPawn = Board:GetPawn(origin)
+
+            if proteccPawn ~= nil and proteccPawn:GetType() == "truelch_GridMech" then
+            	--LOG("-------------- Protected by a Grid Mech!")
+                damageRedirected = damageRedirected + spaceDamage.iDamage
+                spaceDamage.iDamage = 0
+                spaceDamage.sImageMark = "combat/icons/icon_guard_glow.png" --moved the icon to the protected building
+                local id = proteccPawn:GetId()
+
+                if damageRedirected > 0 then
+                    se:AddScript(string.format([[Board:AddAlert(%s, "Grid Protection")]], spaceDamage.loc:GetString()))
+                	--V1
+                	--local redir = SpaceDamage(spaceDamage.loc, damageRedirected)
+                	--se:AddDamage(redir)
+
+                	--V2: Add safe damage (+ trying to apply it on a different space)                                        
+                    local testSpace = getProteccSpace()
+                    --local testSpace = Point(-1, -1)
+                    local redir = SpaceDamage(testSpace, damageRedirected)
+                    redir.sImageMark = "combat/icons/icon_resupply.png"
+                    redir.bHide = true
+
+                    --LOG(string.format("-------------- Before: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
+                    
+                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), testSpace:GetString()))
+                	se:AddSafeDamage(redir)
+                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), origin:GetString()))
+
+                    --LOG(string.format("-------------- After: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
+
+                    --V3: Pawn:ApplyDamage()
+                    --https://github.com/itb-community/ITB-ModLoader/wiki/Pawn#applyDamage
+                    --se:AddScript(string.format("Board:GetPawn(%s):ApplyDamage(SpaceDamage(%s, %s))", spaceDamage.loc:GetString(), spaceDamage.loc:GetString(), tostring(damageRedirected)))
+                end
+            end
+        end
+    end
+
+    --Queued effects
+    ---> doesn't work
+    for i = 1, se.q_effect:size() do
+        local damageRedirected = 0
+        local spaceDamage = se.q_effect:index(i)
+        
+        if spaceDamage.iDamage > 0 and Board:IsBuilding(spaceDamage.loc) then
+        	--LOG("-------------- spaceDamage.loc: "..spaceDamage.loc:GetString())
+        	local origin = spaceDamage.loc
+            local proteccPawn = Board:GetPawn(origin)
+
+            if proteccPawn ~= nil and proteccPawn:GetType() == "truelch_GridMech" then
+            	--LOG("-------------- Protected by a Grid Mech!")
+                damageRedirected = damageRedirected + spaceDamage.iDamage
+                spaceDamage.iDamage = 0
+                spaceDamage.sImageMark = "combat/icons/icon_guard_glow.png" --moved the icon to the protected building
+                local id = proteccPawn:GetId()
+
+                if damageRedirected > 0 then
+                    se:AddScript(string.format([[Board:AddAlert(%s, "Grid Protection")]], spaceDamage.loc:GetString()))
+                	--V1
+                	--local redir = SpaceDamage(spaceDamage.loc, damageRedirected)
+                	--se:AddDamage(redir)
+
+                	--V2: Add safe damage (+ trying to apply it on a different space)                                        
+                    local testSpace = getProteccSpace()
+                    --local testSpace = Point(-1, -1)
+                    local redir = SpaceDamage(testSpace, damageRedirected)
+                    redir.sImageMark = "combat/icons/icon_resupply.png"
+                    redir.bHide = true
+
+                    --LOG(string.format("-------------- Before: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
+                    
+                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), testSpace:GetString()))
+                	se:AddSafeDamage(redir)
+                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), origin:GetString()))
+
+                    --LOG(string.format("-------------- After: testSpace: %s, origin: %s", testSpace:GetString(), origin:GetString()))
+
+                    --V3: Pawn:ApplyDamage()
+                    --https://github.com/itb-community/ITB-ModLoader/wiki/Pawn#applyDamage
+                    --se:AddScript(string.format("Board:GetPawn(%s):ApplyDamage(SpaceDamage(%s, %s))", spaceDamage.loc:GetString(), spaceDamage.loc:GetString(), tostring(damageRedirected)))
+                end
+            end
+        end
+    end
 end
 
 local function EVENT_onSkillBuild(mission, pawn, weaponId, p1, p2, skillEffect)
@@ -489,75 +582,24 @@ modapiext.events.onFinalEffectBuild:subscribe(EVENT_onFinalEffectBuild)
 ----- JUST SOME DEBUG
 
 local function EVENT_onNextTurn(mission)
+	--LOG("========================== EVENT_onNextTurn ==========================")
 	LOG("========= EVENT_onNextTurn -> Currently it is turn of team: "..Game:GetTeamTurn())
-
-	--TODO: clear protecc data (at player's turn start)
-	if Game:GetTeamTurn() == TEAM_PLAYER then
-		missionData().proteccData = {}
-	end
 end
 modApi.events.onNextTurn:subscribe(EVENT_onNextTurn)
 
---[[
-missionData().proteccData = {
-	[107] = { --Firefly's id
-		[1] = 2 --x
-		[2] = 4 --y
-		[3] = 1 --damage value
-	}
-}
-]]
-local function fooSkillReleased(pawn)
-	if pawn == nil or not isMission() or missionData().proteccData == nil or missionData().proteccData[pawn:GetId] == nil then
-		return
-	end
-
-	for _, data in ipairs(missionData().proteccData[pawn:GetId]) do
-		local x = data[1]
-		local y = data[2]
-		local pos = Point(x, y)
-		LOGF("=== fooSkillReleased -> pos: %s, damage: ", pos:GetString(), )
-
-		--Look for Grid Mechs
-		local mech = Board:GetPawn(pos)
-		if mech ~= nil and mech:GetType() == "truelch_GridMech" and Board:IsBuilding(pos) then
-			--Get the damage and apply to the mech
-			--Note that I needed to move temporarily the mech elsewhere to be able to deal damage to it
-
-			--TODO / WIP
-			local se = SkillEffect()
-
-			Board:AddAlert(pos, "Grid Protection")
-			local testSpace = getProteccSpace()
-			local redir = SpaceDamage(testSpace, damageRedirected)
-			mech:SetSpace(testSpace)
-			se:AddSafeDamage(redir)
-			mech:SetSpace(pos)
-
-			Board:AddEffect(se)
-		end
-
-		--Clear data: NOPE, clear once all effects have been resolved,
-		--otherwise, we'll clear the data the first time an enemy release its attack
-		--So we want to clean on next turn (player turn) - or something like that
-	end
-end
-
-
 local EVENT_onQueuedSkillStarted = function(mission, pawn, weaponId, p1, p2)
-	--[[
-	LOG(string.format("%s is using %s at %s!", pawn:GetMechName(), weaponId, p2:GetString()))	
+	LOG(string.format("%s is using %s at %s!", pawn:GetMechName(), weaponId, p2:GetString()))
 	if Board:IsBuilding(p2) then
 		LOG(string.format("----------------> health: %s / max: %s", tostring(Board:GetHealth(p2), tostring(Board:GetMaxHealth(p2)))))
-	end
-	]]
-	--fooSkillReleased(pawn)
+	end	
 end
 modapiext.events.onQueuedSkillStart:subscribe(EVENT_onQueuedSkillStarted)
 
 
---Will not use this one I think, because it's too late?
---Wait, maybe not, we actually want the effect to have been dealt
+local function fooSkillReleased(pawn)
+	if isMission() and missionData().
+end
+
 local EVENT_onQueuedSkillEnded = function(mission, pawn, weaponId, p1, p2)
 	--[[
 	LOG(string.format("%s has finished using %s at %s!", pawn:GetMechName(), weaponId, p2:GetString()))

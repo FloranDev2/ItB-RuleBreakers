@@ -22,7 +22,12 @@ function mod:init()
 	require(self.scriptPath.."palette")
 	--require(self.scriptPath.."achievements")
 	require(self.scriptPath.."sawblade")
+
 	require(self.scriptPath.."pawns")
+	--require(self.scriptPath.."/mechs/dislocation_mech")
+	--require(self.scriptPath.."/mechs/grid_mech") --move on buildings doesn't work anymore when I split files
+	--require(self.scriptPath.."/mechs/sawblade_mech")
+
 	--require(self.scriptPath.."weapons")
 	require(self.scriptPath.."/weapons/debug_weapon")
 	require(self.scriptPath.."/weapons/sawblade_launcher")
