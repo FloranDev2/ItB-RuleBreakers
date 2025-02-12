@@ -73,7 +73,6 @@ function truelch_GridShield:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
 
 	if Board:IsTipImage() and self.AutoShield then
-		--ret:AddScript(string.format([[Board:AddAlert(%s, "Auto-Shield")]], p2))
 		Board:AddAlert(p1, "Auto-Shield")
 		local autoShield = SpaceDamage(p1, 0)
 		autoShield.iShield = 1
@@ -100,12 +99,14 @@ function truelch_GridShield:GetSkillEffect(p1, p2)
 end
 
 local function EVENT_onNextTurn(mission)
-	for i = 0, 2 do
-		local mech = Board:GetPawn(i)
-		--only if the mech is on a building?
-		if mech ~= nil and (mech:IsWeaponPowered("truelch_GridShield_A") or mech:IsWeaponPowered("truelch_GridShield_AB")) then
-			mech:SetShield(true)
-			Board:AddAlert(mech:GetSpace(), "Auto-Shield")
+	if Game:GetTeamTurn() == TEAM_PLAYER then
+		for i = 0, 2 do
+			local mech = Board:GetPawn(i)
+			--only if the mech is on a building?
+			if mech ~= nil and (mech:IsWeaponPowered("truelch_GridShield_A") or mech:IsWeaponPowered("truelch_GridShield_AB")) then
+				mech:SetShield(true)
+				Board:AddAlert(mech:GetSpace(), "Auto-Shield")
+			end
 		end
 	end
 end

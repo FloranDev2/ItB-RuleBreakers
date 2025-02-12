@@ -41,10 +41,13 @@ end
 Also exclude items? Or just pods?
 ]]
 local function isLocOkForRift(point)
+	local item = Board:GetItem(point) --it's "" and not nil but let's do both
 	return true and
 		Board:IsValid(point) and
 		(pawn == nil or not isRiftExc(pawn)) and
-		(Board:GetUniqueBuilding(point) == nil or Board:GetUniqueBuilding(point) == "")
+		(Board:GetUniqueBuilding(point) == nil or Board:GetUniqueBuilding(point) == "") and
+		(item == nil or item == "") and
+		not Board:IsPod(point)
 end
 
 truelch_RiftInducer = Skill:new{

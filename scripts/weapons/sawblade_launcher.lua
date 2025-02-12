@@ -30,6 +30,7 @@ local function isMission()
 		and mission ~= Mission_Test
 end
 
+--LOG(save_table(GetCurrentMission().truelch_RuleBreakers))
 local function missionData()
 	local mission = GetCurrentMission()
 
@@ -131,6 +132,7 @@ function truelch_SawbladeLauncher:GetTargetArea_Normal(point)
 	local ret = PointList()
 
 	local status = self:GetSawbladeStatus()
+	--LOGF("truelch_SawbladeLauncher:GetTargetArea_Normal -> status: %s", tostring(status))
 
 	if status == 0 then
 		if diagonalLaunch then
@@ -348,6 +350,8 @@ function truelch_SawbladeLauncher:GetSkillEffect_Normal(p1, p2)
 		return ret --maybe we should attempt to rebuild the sawblade in that case?
 	end
 
+	LOGF("truelch_SawbladeLauncher:GetSkillEffect_Normal -> status: %s", tostring(status))
+
 	if status == 0 then
 		return self:LaunchSawblade(p1, p2)
 	else
@@ -429,6 +433,8 @@ local function EVENT_onPawnTracked(mission, pawn)
 		missionData().sawStatus[launcherId] = 1
 	end
 end
+
+--LOG()
 
 modApi.events.onMissionStart:subscribe(EVENT_onMissionStarted)
 modapiext.events.onPawnKilled:subscribe(EVENT_onPawnKilled)

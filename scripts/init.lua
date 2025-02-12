@@ -2,7 +2,7 @@ local mod = {
 	id = "truelch_RuleBreakers",
 	name = "Rule Breakers",
 	icon = "img/mod_icon.png",
-	version = "0.0.2",
+	version = "0.0.3",
 	modApiVersion = "2.9.2",
 	--gameVersion = "1.2.88",
     	dependencies = {
@@ -24,11 +24,6 @@ function mod:init()
 	require(self.scriptPath.."sawblade")
 
 	require(self.scriptPath.."pawns")
-	--require(self.scriptPath.."/mechs/dislocation_mech")
-	--require(self.scriptPath.."/mechs/grid_mech") --move on buildings doesn't work anymore when I split files
-	--require(self.scriptPath.."/mechs/sawblade_mech")
-
-	--require(self.scriptPath.."weapons")
 	require(self.scriptPath.."/weapons/debug_weapon")
 	require(self.scriptPath.."/weapons/sawblade_launcher")
 	require(self.scriptPath.."/weapons/grid_shield")

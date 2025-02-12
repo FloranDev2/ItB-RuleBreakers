@@ -233,7 +233,7 @@ local truelch_testMover_mover = nil --mover
 local truelch_testMover_sawblade = nil --sawbladehttps://www.twitch.tv/tastelesstv
 
 function truelch_testMover()
-	LOG("truelch_testMover()")
+	--LOG("truelch_testMover()")
 	--[0] -> mech's id / [1] -> sawblade's id
 	table.insert(missionData().retrMoveData, { truelch_testMover_mover:GetId(), truelch_testMover_sawblade:GetId() } )
 
@@ -345,7 +345,7 @@ truelch_GridMech = Pawn:new {
 	Name = "Grid Mech",
 	Class = "Science",
 	Health = 3,
-	MoveSpeed = 10, --4,
+	MoveSpeed = 4,
 	Image = "MechTritube",
 	ImageOffset = palette,
 	SkillList = { "truelch_GridShield", "truelch_GridDischarge" },
@@ -355,8 +355,8 @@ truelch_GridMech = Pawn:new {
 	Massive = true,
 	Flying = true, --not really necessary in the end?
 	IgnoreSmoke = true,
-	Pushable = false, --maybe?
-	--Corpse = false, --test?
+	Pushable = false,
+	LargeShield = true,
 }
 
 --Taken from Generic's Leaper (and changed to an event because why not)
