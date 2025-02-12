@@ -1,0 +1,440 @@
+===================================
+=== FINAL MISSION - FIRST PHASE ===
+===================================
+
+LOG(save_table(mission))
+
+["GetGetCompletedStatus"] = , 
+["NextRobot"] = , 
+["GetCustomTile"] = , 
+["SpawnPawn"] = , 
+["GetInfiniteSpawn"] = , 
+["GetGetRewardCount"] = , 
+["GetAssetPassive"] = , 
+["GetCeoClosing"] = , 
+["AddDefended"] = , 
+["GetBaseObjectives"] = , 
+["DebrisId"] = { 
+}, 
+["CustomTile"] = "", 
+["GetBlockedSpawns"] = , 
+["BaseStart"] = , 
+["SpawnStartMod"] = 0, 
+["GetGetBonusCompleted"] = , 
+["GetDebrisId"] = , 
+["UndoMove"] = , 
+["GetBlockCracks"] = , 
+["GetTerrainList"] = , 
+["StartDeployment"] = , 
+["DiffMod"] = 0, 
+["BaseUpdate"] = , 
+["GetObjectives"] = , 
+["GetGetSpawner"] = , 
+["GetStartMission"] = , 
+["GetGetMap"] = , 
+["GetTriggerMissionEvent"] = , 
+["GetGetCeoClosing"] = , 
+["Objectives"] = { 
+}, 
+["GetID"] = , 
+["GetSpawnStart_Unfair"] = , 
+["GetBoardList"] = , 
+["GetMapVetoes"] = , 
+["GetUseBonus"] = , 
+["GetBonusList"] = , 
+["BlockSecret"] = false, 
+["GetGetStartingPawns"] = , 
+["MaxEnemy_Easy"] = 6, 
+["MapVetoes"] = { 
+}, 
+["IsNextPhase"] = , 
+["RemoveBonus"] = , 
+["GetBonusCompleted"] = , 
+["Ambience"] = "", 
+["GetEnvironment"] = , 
+["SpawnPawnInternal"] = , 
+["SpawnStart_Easy"] = { 
+[1] = 4, 
+[2] = 5 
+}, 
+["GetRetreatEndingMessage"] = , 
+["ModifySpawnPoint"] = , 
+["Render"] = , 
+["SpawnStart_Unfair"] = 5, 
+["GetGetObjectives"] = , 
+["ChangeSpawnPointPawnType"] = , 
+["IsCracksAllowed"] = , 
+["GetKilledVek"] = , 
+["BonusPool"] = { 
+[1] = 6, 
+[2] = 3, 
+[3] = 4, 
+[4] = 7, 
+[5] = 9, 
+[6] = 8 
+}, 
+["GetMaxEnemy"] = , 
+["GetBonusStatus"] = , 
+["MoveSpawnPoint"] = , 
+["NextPhase"] = "", 
+["GetBaseStart"] = , 
+["GetAddDefended"] = , 
+["StartMission"] = , 
+["__index"] = , 
+["GetDamage"] = , 
+["GetStartingPawns"] = , 
+["RemoveSpawnPoint"] = , 
+["GetMapTags"] = , 
+["BaseObjectives"] = , 
+["GetInitialize"] = , 
+["GetBlockSecret"] = , 
+["PreprocessSpawningPawn"] = , 
+["EnumerateSpawns"] = , 
+["GetSaveData"] = , 
+["SetupDiffMod"] = , 
+["GetGetKillBonus"] = , 
+["GetGlobalSpawnMod"] = , 
+["GlobalSpawnMod"] = 0, 
+["GetCreateSpawner"] = , 
+["GetPowerStart"] = , 
+["UpdateQueuedSpawns"] = , 
+["TriggerMissionEvent"] = , 
+["GetBonusObjs"] = , 
+["MapList"] = { 
+}, 
+["GetAmbience"] = , 
+["SpawnMod"] = 0, 
+["GetBonusObjective"] = , 
+["AssetId"] = "", 
+["AddDebris"] = , 
+["GetPacifistCount"] = , 
+["GetBlockEasy"] = , 
+["GetUndoMove"] = , 
+["AssetPassive"] = "", 
+["UpdateMission"] = , 
+["UpdateSpawning"] = , 
+["GetSpawnStart_Easy"] = , 
+["GetRender"] = , 
+["GetMap"] = , 
+["GetSpawnCount"] = , 
+["GetRewardCount"] = , 
+["IsUnlocked"] = , 
+["GetCompletedStatus"] = , 
+["GetReplaceableBuildings"] = , 
+["GetPhaseCount"] = , 
+["CreateSpawner"] = , 
+["GetSpawnStartMod"] = , 
+["GetUpdateMission"] = , 
+["FlyingSpawns"] = , 
+["GetFlyingSpawns"] = , 
+["new"] = , 
+["GetMaxEnemy_Easy"] = , 
+["GetSpawnsPerTurn"] = , 
+["GetRemoveBonus"] = , 
+["GetVoiceEvents"] = , 
+["SetupDifficulty"] = , 
+["BaseCompletedObjectives"] = , 
+["IsFinalTurn"] = , 
+["GetAssetId"] = , 
+["GetGetObjectiveList"] = , 
+["GetMapList"] = , 
+["GetIsUnlocked"] = , 
+["GetBaseNextTurn"] = , 
+["GetKillBonus"] = , 
+["GetAddAsset"] = , 
+["NextTurn"] = , 
+["GetIsCracksAllowed"] = , 
+["GetGetCompletedObjectives"] = , 
+["GetApplyEnvironmentEffect"] = , 
+["GetGetReplaceableBuildings"] = , 
+["GetGetBonusInfo"] = , 
+["BaseNextTurn"] = , 
+["GetGetBonusStatus"] = , 
+["GetUpdateObjectives"] = , 
+["GetSpawnStart"] = , 
+["GetGetBonusList"] = , 
+["BaseDeployment"] = , 
+["Name"] = "Mission", 
+["GetBossMission"] = , 
+["GetGetDamage"] = , 
+["NextPawn"] = , 
+["GetMapTag"] = , 
+["GetNextPhase"] = , 
+["GetIsEndBlocked"] = , 
+["BonusObjs"] = { 
+}, 
+["MapTags"] = "generic", 
+["GetBonusPool"] = , 
+["GetAddDebris"] = , 
+["GetSpawnPawns"] = , 
+["GetSpawner"] = , 
+["GetGetDiffMod"] = , 
+["GetGetCeoBriefing"] = , 
+["SpawnPawns"] = , 
+["GetTurnLimit"] = , 
+["GetBaseUpdate"] = , 
+["GetIsNextPhase"] = , 
+["VoiceEvents"] = { 
+}, 
+["GetNextTurn"] = , 
+["GetSpawnPointData"] = , 
+["GetGetChoiceEvent"] = , 
+["GetSpawnPawn"] = , 
+["GetGetPacifistCount"] = , 
+["GetDebrisDestroyed"] = , 
+["GetGetMapTag"] = , 
+["RetreatEndingMessage"] = true, 
+["InfiniteSpawn"] = false, 
+["GetNextPawn"] = , 
+["GetName"] = , 
+["UpdateObjectives"] = , 
+["BlockEasy"] = false, 
+["Initialize"] = , 
+["GetBaseDeployment"] = , 
+["GetCompletedObjectives"] = , 
+["PlanEnvironment"] = , 
+["PrepBonus"] = , 
+["MaxEnemy"] = 6, 
+["GetCeoBriefing"] = , 
+["UseBonus"] = true, 
+["GetNextRobotName"] = , 
+["GetDiffMod"] = , 
+["GetBaseCompletedObjectives"] = , 
+["BossMission"] = false, 
+["KilledVek"] = 0, 
+["GetSpawnMod"] = , 
+["BlockedSpawns"] = 0, 
+["GetObjectiveList"] = , 
+["ID"] = "", 
+["BlockCracks"] = false, 
+["NextRobotName"] = , 
+["PhaseCount"] = 1, 
+["PowerStart"] = 0, 
+["GetNextRobot"] = , 
+["GetStartDeployment"] = , 
+["GetPrepBonus"] = , 
+["GetChoiceEvent"] = , 
+["SpawnStart"] = 5, 
+["GetBonusInfo"] = , 
+["GetSetupDiffMod"] = , 
+["ApplyEnvironmentEffect"] = , 
+["IsEnvironmentEffect"] = , 
+["AddAsset"] = , 
+["Environment"] = "Env_Null", 
+["TurnLimit"] = 4, 
+["GetGetBonusObjective"] = , 
+["GetGetDebrisDestroyed"] = , 
+["IsEndBlocked"] =  
+}
+
+
+
+
+
+
+
+LOG(save_table(GetCurrentMission()))
+
+["BonusObjs"] = { 
+}, 
+["QueuedSpawns"] = { 
+[1] = { 
+["type"] = "Firefly1", 
+["location"] = Point( 6, 3 ), 
+["turns"] = 1, 
+["id"] = 136 
+}, 
+[2] = { 
+["type"] = "Hornet1", 
+["location"] = Point( 5, 2 ), 
+["turns"] = 1, 
+["id"] = 137 
+} 
+}, 
+["Spawner"] = { 
+["spawn_island"] = 5, 
+["curr_upgradeRatio"] = { 
+[1] = 0, 
+[2] = 0 
+}, 
+["upgrade_streak"] = 0, 
+["used_bosses"] = 0, 
+["num_spawns"] = 5, 
+["curr_weakRatio"] = { 
+[1] = 0, 
+[2] = 0 
+}, 
+["num_bosses"] = 0, 
+["pawn_counts"] = { 
+["Firefly"] = 2, 
+["Scorpion"] = 1, 
+["Digger"] = 1, 
+["Hornet"] = 1 
+} 
+}, 
+["LiveEnvironment"] = { 
+["StartEffect"] = true, 
+["EndEffect"] = true, 
+["Planned"] = { 
+[1] = Point( 1, 2 ), 
+[2] = Point( 2, 2 ), 
+[3] = Point( 3, 2 ), 
+[4] = Point( 4, 2 ) 
+}, 
+["Phase"] = 1, 
+["Mode"] = 2, 
+["LavaStart"] = { 
+[1] = Point( 2, 1 ) 
+}, 
+["Locations"] = { 
+[1] = Point( 1, 2 ), 
+[2] = Point( 2, 2 ), 
+[3] = Point( 3, 2 ), 
+[4] = Point( 4, 2 ) 
+} 
+}, 
+["VoiceEvents"] = { 
+}, 
+["PowerStart"] = 5, 
+["Initialized"] = true, 
+["deployment"] = { 
+[1] = { 
+["state"] = 4 
+}, 
+[2] = { 
+["state"] = 4 
+}, 
+[0] = { 
+["state"] = 4 
+}, 
+["in_progress"] = false, 
+["phase"] = 2 
+}, 
+["lmn_tileAnims"] = { 
+}, 
+["truelch_RuleBreakers"] = { 
+["sawStatus"] = { 
+[0] = 0 
+}, 
+["proteccData"] = { 
+}, 
+["retrMoveData"] = { 
+} 
+}, 
+["Deployed"] = true, 
+["lmn_pawnAnims"] = { 
+}, 
+["ID"] = "Mission_Final" 
+}
+
+====================================
+=== FINAL MISSION - SECOND PHASE ===
+====================================
+
+LOG(save_table(GetCurrentMission()))
+
+
+table.insert(GetCurrentMission().LiveEnvironment.Locations, Point(0, 0)) --it works! it add falling rocks!
+GetCurrentMission().LiveEnvironment.Locations = {} --clear them all
+
+table.insert(GetCurrentMission().LiveEnvironment.Planned, Point(1, 0)) --idk what id does
+
+["Deployed"] = false, 
+["truelch_RuleBreakers"] = { 
+	["sawStatus"] = { 
+	}, 
+	["proteccData"] = { 
+		[1] = { 
+		}, 
+		[2] = { 
+		}, 
+		[141] = { 
+		}, 
+		[140] = { 
+		}, 
+		[139] = { 
+		} 
+	}, 
+	["retrMoveData"] = { 
+	} 
+}, 
+["lmn_tileAnims"] = { 
+}, 
+["QueuedSpawns"] = { 
+	[1] = { 
+		["type"] = "Firefly1", 
+		["id"] = 143, 
+		["turns"] = 1, 
+		["location"] = Point( 5, 0 ) 
+	}, 
+	[2] = { 
+		["type"] = "Jelly_Lava1", 
+		["id"] = 144, 
+		["turns"] = 1, 
+		["location"] = Point( 6, 2 ) 
+	} 
+}, 
+["Spawner"] = { 
+	["spawn_island"] = 5, 
+	["curr_weakRatio"] = { 
+		[1] = 0, 
+		[2] = 0 
+	}, 
+	["upgrade_streak"] = 0, 
+	["used_bosses"] = 0, 
+	["curr_upgradeRatio"] = { 
+		[1] = 1, 
+		[2] = 0 
+	}, 
+	["num_spawns"] = 5, 
+	["num_bosses"] = 0, 
+	["pawn_counts"] = { 
+		["Jelly_Lava"] = 1, 
+		["Firefly"] = 3, 
+		["Scorpion"] = 2, 
+		["Leaper"] = 2, 
+		["Digger"] = 1 
+	} 
+}, 
+["LiveEnvironment"] = { 
+	["EndEffect"] = true, 
+	["Phase"] = 1, 
+	["Instant"] = false, 
+	["Locations"] = { 
+		[1] = Point( 2, 2 ), 
+		[2] = Point( 2, 6 ), 
+		[3] = Point( 4, 2 ), 
+		[4] = Point( 4, 4 ) 
+	}, 
+	["Planned"] = { 
+		[1] = Point( 2, 2 ), 
+		[2] = Point( 2, 6 ), 
+		[3] = Point( 4, 2 ), 
+		[4] = Point( 4, 4 ) 
+	}, 
+	["LavaPath"] = { 
+		[1] = Point( 5, 0 ), 
+		[2] = Point( 5, 1 ), 
+		[3] = Point( 4, 1 ), 
+		[4] = Point( 3, 1 ), 
+		[5] = Point( 3, 2 ), 
+		[6] = Point( 2, 2 ), 
+		[7] = Point( 2, 3 ), 
+		[8] = Point( 2, 4 ), 
+		[9] = Point( 2, 5 ), 
+		[10] = Point( 2, 6 ), 
+		[11] = Point( 2, 7 ) 
+	}, 
+	["Mode"] = 1, 
+	["StartEffect"] = true, 
+	["WaterTarget"] = true 
+}, 
+["BonusObjs"] = { 
+}, 
+["Initialized"] = true, 
+["VoiceEvents"] = { 
+}, 
+["lmn_pawnAnims"] = { 
+}, 
+["ID"] = "Mission_Final_Cave" 
+}

@@ -122,8 +122,11 @@ truelch_SawbladeLauncher_AB = truelch_SawbladeLauncher:new{
 
 function truelch_SawbladeLauncher:GetSawbladeStatus()
 	if missionData().sawStatus[Pawn:GetId()] == nil then
-		LOGF("-------------- OH NO: mission().sawStatus[%s] == nil", tostring(Pawn:GetId()))
-		return -1 --error
+		--LOGF("-------------- OH NO: mission().sawStatus[%s] == nil", tostring(Pawn:GetId()))
+		--return -1 --error
+		truelch_addSawBlade(Pawn)
+		--missionData().sawStatus[Pawn:GetId()] = 0
+		return 0 --for safety
 	end
 	return missionData().sawStatus[Pawn:GetId()]
 end
@@ -346,8 +349,15 @@ function truelch_SawbladeLauncher:GetSkillEffect_Normal(p1, p2)
 	local status = self:GetSawbladeStatus()
 
 	if status == nil or status == -1 then --error!
+		--[[
 		LOG("----------- return error")
 		return ret --maybe we should attempt to rebuild the sawblade in that case?
+		]]
+		LOG("status was nil or -1, let's put it to 0 to fix that")
+		--Let's consider that the mech has no sawblade
+
+		truelch_addSawBlade(Pawn)
+		status = 0
 	end
 
 	LOGF("truelch_SawbladeLauncher:GetSkillEffect_Normal -> status: %s", tostring(status))
@@ -385,7 +395,7 @@ function truelch_SawbladeLauncher:GetSkillEffect(p1, p2)
 	end
 end
 
-local function EVENT_onMissionStarted(mission)
+local function initSawbladeLaunchers()
 	for i = 0, 2 do
 		local mech = Board:GetPawn(i)
 		if mech ~= nil and (mech:IsWeaponPowered("truelch_SawbladeLauncher") or
@@ -395,6 +405,14 @@ local function EVENT_onMissionStarted(mission)
 			truelch_addSawBlade(mech)
 		end
 	end
+end
+
+local function EVENT_onMissionStarted(mission)
+	initSawbladeLaunchers()
+end
+
+local function EVENT_onMissionNextPhaseCreated(prevMission, nextMission)
+	initSawbladeLaunchers()
 end
 
 local function EVENT_onPawnKilled(mission, pawn)
@@ -430,6 +448,7 @@ local function EVENT_onPawnTracked(mission, pawn)
 
 	if isSawbladePawn(pawn) and missionData().lastLauncher ~= nil then
 		local launcherId = missionData().lastLauncher
+		--was putting sawblade's id before, but no longer needed, I think I could ditch that and put the status to 1 in the weapon's skill effect
 		missionData().sawStatus[launcherId] = 1
 	end
 end
@@ -437,6 +456,7 @@ end
 --LOG()
 
 modApi.events.onMissionStart:subscribe(EVENT_onMissionStarted)
+modApi.events.onMissionNextPhaseCreated:subscribe(EVENT_onMissionNextPhaseCreated)
 modapiext.events.onPawnKilled:subscribe(EVENT_onPawnKilled)
 modapiext.events.onSkillEnd:subscribe(EVENT_onSkillEnd)
 modapiext.events.onPawnTracked:subscribe(EVENT_onPawnTracked)

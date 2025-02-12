@@ -413,7 +413,7 @@ end
 local function fooProtecc(pawn, se, effects, isQueued)
 
 	if not isMission() then
-		LOG("fooProtecc -> not mission")
+		--LOG("fooProtecc -> not mission")
 		return
 	end
 
@@ -488,7 +488,30 @@ modapiext.events.onFinalEffectBuild:subscribe(EVENT_onFinalEffectBuild)
 
 local function EVENT_onNextTurn(mission)
 	if Game:GetTeamTurn() == TEAM_PLAYER then
+		--Clear protecc data
 		missionData().proteccData = {}
+
+		--Final mission second phase only: remove tentacle location for Grid Mech(s) on building(s)
+		LOG("EVENT_onNextTurn -> GetCurrentMission().ID: "..GetCurrentMission().ID)
+		if GetCurrentMission().ID == "Mission_Final_Cave" and GetCurrentMission().LiveEnvironment.Planned ~= nil then
+			LOG("---------------> HERE Mission_Final_Cave")
+			GetCurrentMission().LiveEnvironment.Planned = {} --test
+			--[[
+			for index, point in ipairs(GetCurrentMission().LiveEnvironment.Planned) do
+				LOG("-------------- point: "..point:GetString())
+				for i = 0, 2 do
+					local mech = Board:GetPawn(i)
+					if mech ~= nil and mech:IsMech() and Board:IsBuilding(mech:GetSpace()) and
+							mech:GetSpace() == point then
+						LOG("-------------- mech on a building is targeted by tentacle!")
+						LOG("-------------- index: "..tostring(index))
+						table.remove(GetCurrentMission().LiveEnvironment.Planned, index)
+						index = index - 1 --necessary?
+					end
+				end
+			end
+			]]
+		end
 	end
 end
 modApi.events.onNextTurn:subscribe(EVENT_onNextTurn)
@@ -528,10 +551,16 @@ local function fooSkillReleased(pawn)
 			mech:SetSpace(testSpace)
 			local redir = SpaceDamage(testSpace, damageRedirected)
 			se:AddSafeDamage(redir)
-			Board:AddEffect(se)
+			Board:AddEffect(se)			
 
-			missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
-			--mech:SetSpace(pos) --didn't work
+			--TODO: DAMAGE_DEATH?	
+			if mech:IsShield() and damageRedirected ~= DAMAGE_DEATH then
+				modApi:scheduleHook(550, function()
+					mech:SetSpace(pos) --hope this works
+				end)
+			else
+				missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
+			end
 		end
 
 		--Clear data: NOPE, clear once all effects have been resolved,
