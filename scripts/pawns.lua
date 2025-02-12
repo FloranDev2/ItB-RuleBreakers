@@ -22,6 +22,12 @@ trait:add{
 --- Mission Data ---
 --------------------
 
+local function isGame()
+    return true
+        and Game ~= nil
+        and GAME ~= nil
+end
+
 local function isMission()
 	local mission = GetCurrentMission()
 
@@ -33,6 +39,10 @@ end
 
 local function missionData()
 	local mission = GetCurrentMission()
+
+	if mission == nil then
+		return nil
+	end
 
 	if mission.truelch_RuleBreakers == nil then
 		mission.truelch_RuleBreakers = {}
@@ -244,20 +254,12 @@ function Move:GetSkillEffect(p1, p2, ...)
 		truelch_testMover_mover = mover
 		truelch_testMover_sawblade = Board:GetPawn(p2)
 		ret:AddScript("truelch_testMover()")
-
 		ret:AddScript(string.format("Board:GetPawn(%s):SetSpace(Point(-1, -1))", p2:GetString()))
 		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
 		ret:AddScript(string.format([[Board:AddAlert(%s, "SAWBLADE RETRIEVED")]], p2:GetString()))
-		--ret:AddScript(string.format(
-		--	[[
-		--	LOG("BEFORE saw status")
-		--	missionData().sawStatus[%s] = 0 --I think the issue is that missionData() is local
-		--	LOG("AFTER saw status")
-		--	]], tostring(mover:GetId())))
-
 		ret:AddScript("truelch_testMover2()")
 
-		LOG("------------------ success")
+		--LOG("------------------ success")
 		return ret
 	else
 		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
@@ -270,14 +272,6 @@ end
 
 
 local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
-	--LOG(pawn:GetMechName().." move was undone! Was at: "..undonePosition:GetString()..", returned to: "..pawn:GetSpace():GetString())
-
-	-- DEBUG --->
-	--LOG("------------------ check -> pawn:IsMech(): "..tostring(pawn:IsMech()))
-	--LOG("------------------ check -> is equipped: "..tostring(isEquippedWithSawbladeLauncher(pawn)))
-	--LOG("------------------ check -> status: "..tostring(missionData().sawStatus[pawn:GetId()]))
-	-- <--- DEBUG
-
 	if not pawn:IsMech()
 			or not isEquippedWithSawbladeLauncher(pawn)
 			or missionData().sawStatus[pawn:GetId()] == nil then
@@ -351,7 +345,7 @@ truelch_GridMech = Pawn:new {
 	Name = "Grid Mech",
 	Class = "Science",
 	Health = 3,
-	MoveSpeed = 4,
+	MoveSpeed = 10, --4,
 	Image = "MechTritube",
 	ImageOffset = palette,
 	SkillList = { "truelch_GridShield", "truelch_GridDischarge" },
@@ -418,6 +412,11 @@ end
 
 local function fooProtecc(pawn, se, effects, isQueued)
 
+	if not isMission() then
+		LOG("fooProtecc -> not mission")
+		return
+	end
+
 	if isQueued then
 		missionData().proteccData[pawn:GetId()] = {}
 	end
@@ -455,8 +454,11 @@ local function fooProtecc(pawn, se, effects, isQueued)
 
                 		--TODO / WIP
                 		--Add all damage (it can be an AoE!)
-                		--missionData().proteccData[pawn:GetId()]
-						table.insert(missionData().proteccData[pawn:GetId()], { loc.x, loc.y, damageRedirected)
+                		--[[
+                		LOGF("----- fooProtecc() -> putting data: pawn's id: %s, pos: %s, damage: %s",
+                			tostring(pawn:GetId()), origin:GetString(), tostring(damageRedirected))
+            			]]
+						table.insert(missionData().proteccData[pawn:GetId()], { origin.x, origin.y, damageRedirected })
                 	end
 
                 end
@@ -466,22 +468,18 @@ local function fooProtecc(pawn, se, effects, isQueued)
 end
 
 local function computeGridMechProtecc(pawn, se)
-	if se == nil then return end
+	if se == nil or pawn == nil then return end
 	fooProtecc(pawn, se, se.effect,   false)
 	fooProtecc(pawn, se, se.q_effect, true)
 end
 
 local function EVENT_onSkillBuild(mission, pawn, weaponId, p1, p2, skillEffect)
-	if Game and weaponId ~= "Move" then
-		LOG(string.format("onSkillBuild(weaponId: %s, p2: %s) -> turn: %s"
-			weaponId, p2:GetString(), tostring(Game:GetTeamTurn())))
-	end
 	computeGridMechProtecc(pawn, skillEffect)
 end
 modapiext.events.onSkillBuild:subscribe(EVENT_onSkillBuild)
 
 local function EVENT_onFinalEffectBuild(mission, pawn, weaponId, p1, p2, p3, skillEffect)
-	computeGridMechProtecc(p1, skillEffect)
+	computeGridMechProtecc(pawn, skillEffect)
 end
 modapiext.events.onFinalEffectBuild:subscribe(EVENT_onFinalEffectBuild)
 
@@ -489,9 +487,6 @@ modapiext.events.onFinalEffectBuild:subscribe(EVENT_onFinalEffectBuild)
 ----- JUST SOME DEBUG
 
 local function EVENT_onNextTurn(mission)
-	LOG("========= EVENT_onNextTurn -> Currently it is turn of team: "..Game:GetTeamTurn())
-
-	--TODO: clear protecc data (at player's turn start)
 	if Game:GetTeamTurn() == TEAM_PLAYER then
 		missionData().proteccData = {}
 	end
@@ -508,15 +503,16 @@ missionData().proteccData = {
 }
 ]]
 local function fooSkillReleased(pawn)
-	if pawn == nil or not isMission() or missionData().proteccData == nil or missionData().proteccData[pawn:GetId] == nil then
+	if pawn == nil or not isMission() or missionData().proteccData == nil or missionData().proteccData[pawn:GetId()] == nil then
 		return
 	end
 
-	for _, data in ipairs(missionData().proteccData[pawn:GetId]) do
+	for _, data in ipairs(missionData().proteccData[pawn:GetId()]) do
 		local x = data[1]
 		local y = data[2]
 		local pos = Point(x, y)
-		LOGF("=== fooSkillReleased -> pos: %s, damage: ", pos:GetString(), )
+		local damageRedirected = data[3]
+		--LOGF("=== fooSkillReleased -> pos: %s, damage: %s", pos:GetString(), tostring(damageRedirected))
 
 		--Look for Grid Mechs
 		local mech = Board:GetPawn(pos)
@@ -527,14 +523,15 @@ local function fooSkillReleased(pawn)
 			--TODO / WIP
 			local se = SkillEffect()
 
-			Board:AddAlert(pos, "Grid Protection")
+			--Board:AddAlert(pos, "Grid Protection")
 			local testSpace = getProteccSpace()
-			local redir = SpaceDamage(testSpace, damageRedirected)
 			mech:SetSpace(testSpace)
+			local redir = SpaceDamage(testSpace, damageRedirected)
 			se:AddSafeDamage(redir)
-			mech:SetSpace(pos)
-
 			Board:AddEffect(se)
+
+			missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
+			--mech:SetSpace(pos) --didn't work
 		end
 
 		--Clear data: NOPE, clear once all effects have been resolved,
@@ -544,31 +541,33 @@ local function fooSkillReleased(pawn)
 end
 
 
-local EVENT_onQueuedSkillStarted = function(mission, pawn, weaponId, p1, p2)
-	--[[
-	LOG(string.format("%s is using %s at %s!", pawn:GetMechName(), weaponId, p2:GetString()))	
-	if Board:IsBuilding(p2) then
-		LOG(string.format("----------------> health: %s / max: %s", tostring(Board:GetHealth(p2), tostring(Board:GetMaxHealth(p2)))))
-	end
-	]]
-	--fooSkillReleased(pawn)
-end
-modapiext.events.onQueuedSkillStart:subscribe(EVENT_onQueuedSkillStarted)
-
-
---Will not use this one I think, because it's too late?
---Wait, maybe not, we actually want the effect to have been dealt
 local EVENT_onQueuedSkillEnded = function(mission, pawn, weaponId, p1, p2)
-	--[[
-	LOG(string.format("%s has finished using %s at %s!", pawn:GetMechName(), weaponId, p2:GetString()))
-	if Board:IsBuilding(p2) then
-		LOG(string.format("----------------> health: %s / max: %s", tostring(Board:GetHealth(p2), tostring(Board:GetMaxHealth(p2)))))
-	end
-	]]
 	fooSkillReleased(pawn)
 end
 modapiext.events.onQueuedSkillEnd:subscribe(EVENT_onQueuedSkillEnded)
 
+
+local EVENT_onPawnDamaged = function(mission, pawn, damageTaken)
+	if not isMission() or missionData().proteccReloc == nil or
+			missionData().proteccReloc[1] == nil or
+			missionData().proteccReloc[2] == nil or
+			missionData().proteccReloc[3] == nil then
+		return
+	end
+
+	local id = missionData().proteccReloc[1]
+	local pos = Point(missionData().proteccReloc[2], missionData().proteccReloc[3])
+
+	local pawn = Board:GetPawn(id)
+	if pawn ~= nil then
+		pawn:SetSpace(pos)
+		--Board:AddAlert(pos, "Grid Protection")
+	end
+
+	--Clean data in any case
+	missionData().proteccReloc = nil
+end
+modapiext.events.onPawnDamaged:subscribe(EVENT_onPawnDamaged)
 
 
 
