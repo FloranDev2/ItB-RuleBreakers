@@ -25,7 +25,46 @@ function truelch_debug_weapon:GetTargetArea(point)
 	return ret
 end
 
+local function debugLiveEnv(msg)
+	LOG(msg)
+	local mission = GetCurrentMission()
+
+	for index, point in ipairs(mission.LiveEnvironment.Planned) do
+		LOG("-------------- ENV point: "..point:GetString())
+		--[[
+		for i = 0, 2 do
+			local mech = Board:GetPawn(i)
+			if mech ~= nil and mech:IsMech() and Board:IsBuilding(mech:GetSpace()) and
+				mech:GetSpace() == point then
+				LOG("-------------- mech on a building is targeted by tentacle!")
+				LOG("-------------- index: "..tostring(index))
+				table.remove(mission.LiveEnvironment.Planned, index)
+				index = index - 1 --necessary?
+			end
+		end
+		]]
+	end
+
+end
+
 function truelch_debug_weapon:GetSkillEffect(p1, p2)
+	local ret = SkillEffect()
+
+	local mission = GetCurrentMission()
+
+	debugLiveEnv("=== Before:")
+
+	if mission.ID == "Mission_Final_Cave" and GetCurrentMission().LiveEnvironment.Planned ~= nil then
+		mission.LiveEnvironment.Planned = { p2 }
+	end
+
+	debugLiveEnv("=== After:")
+
+	return ret
+end
+
+
+function truelch_debug_weapon:GetSkillEffect_OLD(p1, p2)
 	local ret = SkillEffect()
 
 	--[[

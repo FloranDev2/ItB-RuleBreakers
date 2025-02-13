@@ -492,25 +492,25 @@ local function EVENT_onNextTurn(mission)
 		missionData().proteccData = {}
 
 		--Final mission second phase only: remove tentacle location for Grid Mech(s) on building(s)
-		LOG("EVENT_onNextTurn -> GetCurrentMission().ID: "..GetCurrentMission().ID)
-		if GetCurrentMission().ID == "Mission_Final_Cave" and GetCurrentMission().LiveEnvironment.Planned ~= nil then
-			LOG("---------------> HERE Mission_Final_Cave")
-			GetCurrentMission().LiveEnvironment.Planned = {} --test
-			--[[
-			for index, point in ipairs(GetCurrentMission().LiveEnvironment.Planned) do
-				LOG("-------------- point: "..point:GetString())
+		--LOG("EVENT_onNextTurn -> GetCurrentMission().ID: "..GetCurrentMission().ID)
+		if GetCurrentMission().ID == "Mission_Final_Cave" and GetCurrentMission().LiveEnvironment.Locations ~= nil then
+			--LOG("---------------> HERE Mission_Final_Cave")
+			--GetCurrentMission().LiveEnvironment.Locations = {} --test
+			for index, point in ipairs(GetCurrentMission().LiveEnvironment.Locations) do
+				--LOG("-------------- point: "..point:GetString())
+				--table.remove(GetCurrentMission().LiveEnvironment.Locations, index) --test
+				--index = index - 1 --necessary?
 				for i = 0, 2 do
 					local mech = Board:GetPawn(i)
 					if mech ~= nil and mech:IsMech() and Board:IsBuilding(mech:GetSpace()) and
-							mech:GetSpace() == point then
-						LOG("-------------- mech on a building is targeted by tentacle!")
-						LOG("-------------- index: "..tostring(index))
-						table.remove(GetCurrentMission().LiveEnvironment.Planned, index)
+						mech:GetSpace() == point then
+						--LOG("-------------- mech on a building is targeted by tentacle!")
+						--LOG("-------------- index: "..tostring(index))
+						table.remove(GetCurrentMission().LiveEnvironment.Locations, index)
 						index = index - 1 --necessary?
 					end
 				end
 			end
-			]]
 		end
 	end
 end
