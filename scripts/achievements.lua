@@ -16,6 +16,7 @@ Sawblade Mech
 - Deal X damage after one use of the Sawblade Launcher (no matter the way it's used)
 
 Dislocation Mech
+- Make the train arrive faster to its destination? lmao
 ]]
 
 --ADD ACHIEVEMENTS

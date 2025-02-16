@@ -83,8 +83,8 @@ truelch_SawbladeLauncher = Skill:new{
 	OnKill = "Spawn Sawblade",
 
 	--Art
-	ProjectileArt = "effects/shot_pierce",
-	ShotUpArt = "advanced/effects/shotup_deploybomb.png",
+	ProjectileArt = "effects/truelch_sawblade_proj",
+	ShotUpArt = "effects/truelch_shotup_sawblade.png",
 	ArtilleryHeight = 0, --artillery arc
 
 	--Tip image
