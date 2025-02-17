@@ -182,6 +182,8 @@ function truelch_RiftInducer:GetSkillEffect(p1, p2)
 		damage.sImageMark = "advanced/combat/icons/icon_teleport_glow.png"
 	end
 
+	--damage.sImageMark = "combat/icons/icon_swap_impossible.png"
+
 	ret:AddArtillery(damage, self.UpShot)
 
 	return ret

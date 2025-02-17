@@ -50,15 +50,18 @@ end
 function truelch_debug_weapon:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
 
+	local proteccAnim = SpaceDamage(p2, 0)
+    proteccAnim.sAnimation = "truelch_grid_protecc"
+    ret:AddDamage(proteccAnim)
+
+	--[[
 	local mission = GetCurrentMission()
-
 	debugLiveEnv("=== Before:")
-
 	if mission.ID == "Mission_Final_Cave" and GetCurrentMission().LiveEnvironment.Planned ~= nil then
 		mission.LiveEnvironment.Planned = { p2 }
 	end
-
 	debugLiveEnv("=== After:")
+	]]
 
 	return ret
 end

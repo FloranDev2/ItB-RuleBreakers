@@ -30,7 +30,6 @@ local function isMission()
 		and mission ~= Mission_Test
 end
 
---LOG(save_table(GetCurrentMission().truelch_RuleBreakers))
 local function missionData()
 	local mission = GetCurrentMission()
 
@@ -38,17 +37,14 @@ local function missionData()
 		mission.truelch_RuleBreakers = {}
 	end
 
-	if mission.truelch_RuleBreakers.sawStatus == nil then
-		mission.truelch_RuleBreakers.sawStatus = {}
+	if mission.truelch_RuleBreakers.sawAmount == nil then
+		mission.truelch_RuleBreakers.sawAmount = {}
 	end
 
 	return mission.truelch_RuleBreakers
 end
 
-function truelch_addSawBlade(pawn)
-	if pawn == nil then return end
-	missionData().sawStatus[pawn:GetId()] = 0
-end
+
 
 local function isSawbladePawn(pawn)
 	if pawn ~= nil and (pawn:GetType() == "truelch_Sawblade" or pawn:GetType() == "truelch_Sawblade_A") then
@@ -86,6 +82,7 @@ truelch_SawbladeLauncher = Skill:new{
 	ProjectileArt = "effects/truelch_sawblade_proj",
 	ShotUpArt = "effects/truelch_shotup_sawblade.png",
 	ArtilleryHeight = 0, --artillery arc
+	Anim = "truelch_anim_sawblade",
 
 	--Tip image
 	TipIndex = 0,
@@ -108,6 +105,7 @@ Weapon_Texts.truelch_SawbladeLauncher_Upgrade2 = "Escalating Damage"
 truelch_SawbladeLauncher_A = truelch_SawbladeLauncher:new{
 	UpgradeDescription = "The sawblade gets +2 hp and +1 Thorns damage.",
 	SawbladePawn = "truelch_Sawblade_A",
+	Anim = "truelch_anim_sawblade_A",
 }
 
 truelch_SawbladeLauncher_B = truelch_SawbladeLauncher:new{
@@ -117,27 +115,60 @@ truelch_SawbladeLauncher_B = truelch_SawbladeLauncher:new{
 
 truelch_SawbladeLauncher_AB = truelch_SawbladeLauncher:new{
 	SawbladePawn = "truelch_Sawblade_A",
+	Anim = "truelch_anim_sawblade_A",
 	EscalatingDamage = 1,
 }
 
-function truelch_SawbladeLauncher:GetSawbladeStatus()
-	if missionData().sawStatus[Pawn:GetId()] == nil then
-		--LOGF("-------------- OH NO: mission().sawStatus[%s] == nil", tostring(Pawn:GetId()))
-		--return -1 --error
-		truelch_addSawBlade(Pawn)
-		--missionData().sawStatus[Pawn:GetId()] = 0
-		return 0 --for safety
+
+function truelch_SawbladeLauncher:SetSawblade(value)
+	if Pawn == nil then return end --should now happen
+
+	local pawnId = Pawn:GetId()
+	local oldValue = missionData().sawAmount[pawnId]
+
+	--Update anims
+	if oldValue == 0 and newValue == 1 then
+		customAnim:add(pawnId, self.Anim)
+	elseif oldValue == 1 and newValue == 0 then
+		customAnim:rem(pawnId, self.Anim)
 	end
-	return missionData().sawStatus[Pawn:GetId()]
+
+	--Apply value
+
+end
+
+
+function truelch_SawbladeLauncher:AddSawblade(incr)
+	if Pawn == nil then return end --should now happen
+
+	local oldValue = missionData().sawAmount[pawn:GetId()]
+	newValue = oldValue + incr
+
+	--Limits
+	if missionData().sawAmount[Pawn:GetId()] < 0 then
+		missionData().sawAmount[Pawn:GetId()] = 0
+	elseif missionData().sawAmount[Pawn:GetId()] > 1 then
+		missionData().sawAmount[Pawn:GetId()] = 1
+	end
+
+	--Apply value
+	truelch_setSawblade(Pawn, newValue)
+end
+
+function truelch_SawbladeLauncher:GetSawbladeAmount()
+	if missionData().sawAmount[Pawn:GetId()] == nil then
+		self:SetSawBlade(0)
+	end
+	return missionData().sawAmount[Pawn:GetId()]
 end
 
 function truelch_SawbladeLauncher:GetTargetArea_Normal(point)
 	local ret = PointList()
 
-	local status = self:GetSawbladeStatus()
-	--LOGF("truelch_SawbladeLauncher:GetTargetArea_Normal -> status: %s", tostring(status))
+	local amount = self:GetSawbladeAmount()
+	--LOGF("truelch_SawbladeLauncher:GetTargetArea_Normal -> amount: %s", tostring(amount))
 
-	if status == 0 then
+	if amount == 0 then
 		if diagonalLaunch then
 			for j = -self.Range, self.Range do
 				for i = -self.Range, self.Range do
@@ -155,7 +186,7 @@ function truelch_SawbladeLauncher:GetTargetArea_Normal(point)
 				end
 			end
 		end		
-	elseif status == 1 then
+	elseif amount == 1 then
 		for j = 0, 7 do
 			for i = 0, 7 do
 				local curr = Point(i, j)
@@ -196,8 +227,6 @@ end
 function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 	local ret = SkillEffect()
 
-	--TODO: remove custom anim (in AddScript)
-
 	local dir = GetDirection(p2 - p1)
 	local dist = p1:Manhattan(p2)
 	local currEscDmg = 0
@@ -232,17 +261,15 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 		end
 
 		if regular then
-			spaceDamage.sAnimation = "ExploRaining1"
-			ret:AddDamage(spaceDamage)
-			--Set status: sawblade destroyed (since it's not actually deployed)
-			ret:AddScript("missionData().sawStatus[Pawn:GetId()] = 1")
-			--TODO: play anim?
+			ret:AddDamage(spaceDamage)			
 		end
 	end
 
+	--In any case, right?
+	ret:AddScript("self:AddSawblade(Pawn, -1)")
+
 	return ret
 end
-
 
 local function distancePointLine(px, py, x1, y1, x2, y2)
 	local A = y2 - y1
@@ -346,7 +373,7 @@ end
 
 function truelch_SawbladeLauncher:GetSkillEffect_Normal(p1, p2)
 	local ret = SkillEffect()
-	local status = self:GetSawbladeStatus()
+	local status = self:GetSawbladeAmount()
 
 	if status == nil or status == -1 then --error!
 		--[[
@@ -356,8 +383,9 @@ function truelch_SawbladeLauncher:GetSkillEffect_Normal(p1, p2)
 		LOG("status was nil or -1, let's put it to 0 to fix that")
 		--Let's consider that the mech has no sawblade
 
-		truelch_addSawBlade(Pawn)
-		status = 0
+		--truelch_addSawBlade(Pawn)
+		--status = 0
+
 	end
 
 	LOGF("truelch_SawbladeLauncher:GetSkillEffect_Normal -> status: %s", tostring(status))
@@ -382,6 +410,18 @@ function truelch_SawbladeLauncher:GetSkillEffect_TipImage(p1, p2)
 	local ret = SkillEffect()
 
 	if self.TipIndex == 0 then
+		--Launch sawblade
+		Board:AddAlert(p1, "Launch Sawblade")
+		self.TipIndex = 1
+		return self:LaunchSawblade(p1, p2)
+
+	elseif self.TipIndex == 1 then
+		--Return sawblade
+		Board:AddAlert(p1, "Launch Sawblade")
+		self.TipIndex = 0
+		return self:ReturnSawblade(p1, p2)
+
+	--elseif self.TipIndex == 2 then
 	end
 
 	return ret
@@ -453,10 +493,20 @@ local function EVENT_onPawnTracked(mission, pawn)
 	end
 end
 
---LOG()
+
+--If p2 was targeting a building and this building is destroyed by the sawblade launcher, spawns a sawblade!
+local function EVENT_onBuildingDestroyed(mission, buildingData)
+	LOG("Building at "..buildingData.loc:GetString().." was destroyed!")
+
+	if buildingData.loc == p2 then
+	end
+
+end
+
 
 modApi.events.onMissionStart:subscribe(EVENT_onMissionStarted)
 modApi.events.onMissionNextPhaseCreated:subscribe(EVENT_onMissionNextPhaseCreated)
 modapiext.events.onPawnKilled:subscribe(EVENT_onPawnKilled)
 modapiext.events.onSkillEnd:subscribe(EVENT_onSkillEnd)
 modapiext.events.onPawnTracked:subscribe(EVENT_onPawnTracked)
+modapiext.events.onBuildingDestroyed:subscribe(EVENT_onBuildingDestroyed)

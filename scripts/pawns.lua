@@ -51,13 +51,8 @@ local function missionData()
 	---------------------
 	--- SAWBLADE MECH ---
 	---------------------
-
-	--missionData().sawStatus[pawnId] =
-	---> 0: sawblade is on the mech
-	---> 1: sawblade is dead
-	---> <sawblade's id>: sawblade is alive!
-	if mission.truelch_RuleBreakers.sawStatus == nil then
-		mission.truelch_RuleBreakers.sawStatus = {}
+	if mission.truelch_RuleBreakers.sawAmount == nil then
+		mission.truelch_RuleBreakers.sawAmount = {}
 	end
 
 	--[[
@@ -76,7 +71,6 @@ local function missionData()
 	-----------------
 	--- GRID MECH ---
 	-----------------
-
 	--[[
 	Are Point serializable? I might just put coordinates in the mission data
 	Another issue: the damage: should I save status (fire, acid, etc.) or just the damage value?
@@ -107,6 +101,7 @@ local function missionData()
 	return mission.truelch_RuleBreakers
 end
 
+
 ----------------
 --- Saw Mech ---
 ----------------
@@ -118,7 +113,7 @@ truelch_SawbladeMech = Pawn:new {
 	MoveSpeed = 4, --idea: 3 + 1 if the sawblade isn't on the mech?
 	Image = "mech_sawblade", --"MechPierce"
 	ImageOffset = palette,
-	SkillList = { "truelch_SawbladeLauncher", --[["truelch_debug_weapon"]] },
+	SkillList = { "truelch_SawbladeLauncher", "truelch_debug_weapon" },
 	SoundLocation = "/mech/brute/pierce_mech/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
@@ -258,12 +253,9 @@ function Move:GetSkillEffect(p1, p2, ...)
 		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
 		ret:AddScript(string.format([[Board:AddAlert(%s, "SAWBLADE RETRIEVED")]], p2:GetString()))
 		ret:AddScript("truelch_testMover2()")
-
-		--LOG("------------------ success")
 		return ret
 	else
 		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
-		--LOG("------------------ failure")
 		return ret
 	end
 
@@ -274,7 +266,7 @@ end
 local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
 	if not pawn:IsMech()
 			or not isEquippedWithSawbladeLauncher(pawn)
-			or missionData().sawStatus[pawn:GetId()] == nil then
+			or missionData().sawAmount[pawn:GetId()] == nil then
 		LOG("EVENT_onPawnUndoMove -> check return")
 		return
 	end
@@ -289,11 +281,11 @@ local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
 	- >= 1: not used anymore
 	]]
 
-	local status = missionData().sawStatus[pawn:GetId()]
-	--LOG("------------------ status: "..tostring(status))
+	local amount = missionData().sawAmount[pawn:GetId()]
+	--LOG("------------------ amount: "..tostring(amount))
 
-	if status == 1 then
-		--LOG("------------------ status == 1 (meaning that we don't actually have a sawblade)")
+	if amount == 0 then
+		--LOG("------------------ amount == 0 (meaning that we don't actually have a sawblade)")
 		return
 	end
 
@@ -348,7 +340,8 @@ truelch_GridMech = Pawn:new {
 	MoveSpeed = 4,
 	Image = "mech_grid",
 	ImageOffset = palette,
-	SkillList = { "truelch_GridShield", "truelch_GridDischarge" },
+	---SkillList = { "truelch_GridShield", "truelch_GridDischarge" },
+	SkillList = { "truelch_GridShield", "truelch_debug_weapon" },
 	SoundLocation = "/enemy/mosquito_2/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
@@ -361,7 +354,7 @@ truelch_GridMech = Pawn:new {
 
 --Taken from Generic's Leaper (and changed to an event because why not)
 local function EVENT_onPawnGrappled(mission, pawn, isGrappled)
-	LOG("EVENT_onPawnGrappled")
+	--LOG("EVENT_onPawnGrappled")
 	if isGrappled and pawn:GetType() == "truelch_GridMech" then --If we're grappled and it's our truelch_GridMech
 		--If removing the web right away it looks really weird (try it if you want). So we'll wait about half a second with this
 
@@ -413,7 +406,6 @@ end
 local function fooProtecc(pawn, se, effects, isQueued)
 
 	if not isMission() then
-		--LOG("fooProtecc -> not mission")
 		return
 	end
 
@@ -434,9 +426,16 @@ local function fooProtecc(pawn, se, effects, isQueued)
                 local id = proteccPawn:GetId()
                 if damageRedirected > 0 then
                 	if not isQueued then
-	                    se:AddScript(string.format([[Board:AddAlert(%s, "Grid Protection")]], spaceDamage.loc:GetString()))                                  
-	                    local testSpace = getProteccSpace()
+	                    local proteccAnim = SpaceDamage(origin, 0)
+	                    proteccAnim.sAnimation = "truelch_anim_grid_protecc"
+	                    se:AddDamage(proteccAnim)
+
+	                    se:AddScript(string.format([[Board:AddAlert(%s, "Grid Protection")]], spaceDamage.loc:GetString()))
+
+	                    LOG("----------------------------- A")
+	                    
 	                    local redir = SpaceDamage(testSpace, damageRedirected)
+	                    local testSpace = getProteccSpace()
 	                    redir.bHide = true                   
 	                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), testSpace:GetString()))
 	                	se:AddSafeDamage(redir)
@@ -546,8 +545,15 @@ local function fooSkillReleased(pawn)
 			--TODO / WIP
 			local se = SkillEffect()
 
+			LOG("----------------------------- B")
+
+			local proteccAnim = SpaceDamage(pos, 0)
+            proteccAnim.sAnimation = "truelch_anim_grid_protecc"
+            se:AddDamage(proteccAnim)
+
 			--Board:AddAlert(pos, "Grid Protection")
 			local testSpace = getProteccSpace()
+			mech:SetInvisible(true)
 			mech:SetSpace(testSpace)
 			local redir = SpaceDamage(testSpace, damageRedirected)
 			se:AddSafeDamage(redir)
@@ -557,6 +563,7 @@ local function fooSkillReleased(pawn)
 			if mech:IsShield() and damageRedirected ~= DAMAGE_DEATH then
 				modApi:scheduleHook(550, function()
 					mech:SetSpace(pos) --hope this works
+					mech:SetInvisible(false)
 				end)
 			else
 				missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
@@ -590,6 +597,7 @@ local EVENT_onPawnDamaged = function(mission, pawn, damageTaken)
 	local pawn = Board:GetPawn(id)
 	if pawn ~= nil then
 		pawn:SetSpace(pos)
+		pawn:SetInvisible(false)
 		--Board:AddAlert(pos, "Grid Protection")
 	end
 
