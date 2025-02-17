@@ -85,6 +85,8 @@ function truelch_GridShield:GetSkillEffect(p1, p2)
 	shield.iShield = 1
 	ret:AddDamage(shield)
 
+	ret:AddScript("Pawn:SetShield(true)") --test
+
 	if self.PushAdjacent then
 		for dir = DIR_START, DIR_END do
 			local curr = p2 + DIR_VECTORS[dir]

@@ -1,7 +1,11 @@
-local resourcePath = mod_loader.mods[modApi.currentMod].resourcePath
-local scriptPath = mod_loader.mods[modApi.currentMod].scriptPath
-local mechPath = resourcePath .."img/mechs/"
 local mod = modApi:getCurrentMod()
+
+local resourcePath = mod.resourcePath
+local scriptPath = mod.scriptPath
+
+local mechPath = resourcePath .."img/mechs/"
+
+local functions = require(scriptPath.."functions")
 
 --to do for both sawblade and upgraded saw blade:
 local trait = require(scriptPath.."/libs/trait") --unnecessary?
@@ -44,41 +48,16 @@ truelch_Sawblade_A = truelch_Sawblade:new{
 }
 AddPawn("truelch_Sawblade_A")
 
---------------
---- Events ---
---------------
 
-local function isVarNil(msg, var)
-	if var == nil then
-		LOG("----------- "..msg.." is nil :(")
-	else
-		LOG("----------- "..msg.." exists :)")
-	end
-end
-
-local function isSawbladePos(point)
-	local pawn = Board:GetPawn(point)
-	if pawn ~= nil and pawn:GetType() == "truelch_Sawblade" then
-		return true
-	end
-	return false
-end
-
-local function isReinforcedSawbladePos(point)
-	local pawn = Board:GetPawn(point)
-	if pawn ~= nil and pawn:GetType() == "truelch_Sawblade_A" then
-		return true
-	end
-	return false
-end
+---------------
+--- EFFECTS ---
+---------------
 
 --p1 is the pos of the shooter. With this, we can check if we are in melee range
 local function computeThornDamage(p1, se)
 	if se == nil or se.effect == nil then return end
 
-	--took that safety from my hell breachers protecc
     if not se.q_effect:empty() then
-        --LOG("HERE!!! queued effect detected")
         return
     end
 
@@ -87,11 +66,11 @@ local function computeThornDamage(p1, se)
 		local loc = spaceDamage.loc
 		local dist = p1:Manhattan(loc)
 		if dist == 1 then
-			if isSawbladePos(loc) then
+			if functions:isSawbladePos(loc) then
 				local thornDamage = SpaceDamage(p1, 1)
 				--TODO: animation
 				se:AddDamage(thornDamage)
-			elseif isReinforcedSawbladePos(loc) then
+			elseif functions:isReinforcedSawbladePos(loc) then
 				local thornDamage = SpaceDamage(p1, 2)
 				--TODO: animation
 				se:AddDamage(thornDamage)
@@ -100,6 +79,11 @@ local function computeThornDamage(p1, se)
 	end
 
 end
+
+
+--------------
+--- EVENTS ---
+--------------
 
 local function EVENT_onSkillBuild(mission, pawn, weaponId, p1, p2, skillEffect)
 	computeThornDamage(p1, skillEffect)

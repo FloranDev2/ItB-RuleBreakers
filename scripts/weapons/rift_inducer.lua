@@ -17,6 +17,15 @@ Stuff to check:
 str_battery1
 ]]
 
+local mod = mod_loader.mods[modApi.currentMod]
+local riftAreaVersion --1: lines, 2: squares, 3: manhattan
+modApi.events.onModLoaded:subscribe(function(id)
+	if id ~= mod.id then return end
+	local options = mod_loader.currentModContent[id].options
+	riftAreaVersion = options["option_rift_area"].value
+	LOG("riftAreaVersion: "..tostring(riftAreaVersion))
+end)
+
 local riftPawnExceptions = {
 	"Dam_Pawn",
 	--"SatelliteRocket", --it's fine
@@ -160,6 +169,54 @@ function truelch_RiftInducer:GetTargetArea(point)
 	end
 	
 	return ret
+end
+
+function truelch_RiftInducer:GetSecAreaPoints(p2)
+	points = {}
+
+	--riftAreaVersion --1: lines, 2: squares, 3: manhattan
+	LOG("riftAreaVersion: "..tostring(riftAreaVersion))
+	
+	if riftAreaVersion == 1 then
+		--Lines
+		for dir = DIR_START, DIR_END do
+			for i = 1, self.SecondTargetRange do
+				local curr = p2 + DIR_VECTORS[dir] * i
+				local pawn = Board:GetPawn(curr)
+
+				if isLocOkForRift(curr) then
+					--ret:push_back(curr)
+					points[#points + 1] = curr
+				end
+			end
+		end
+	elseif riftAreaVersion == 2 then
+		--Square
+		for j = -self.Range, self.Range do
+			for i = -self.Range, self.Range do
+				local curr = Point(i, j)
+				if i ~= 0 or j ~= 0 then
+					points[#points + 1] = curr
+				end
+			end
+		end
+	elseif riftAreaVersion == 3 then
+		--Distance (lazy way)		
+		for j = 0, 7 do
+			for i = 0, 7 do
+				local curr = Point(i, j)
+				local dist = p2:Manhattan(curr)
+				if dist <= self.Range and dist > 0 then
+					points[#points + 1] = curr
+				end 
+			end
+		end
+	else
+		LOG("truelch_RiftInducer:GetSecAreaPoints -> unexpected riftAreaVersion: "..tostring(riftAreaVersion))
+	end
+
+	--Return
+	return points
 end
 
 function truelch_RiftInducer:GetSkillEffect(p1, p2)

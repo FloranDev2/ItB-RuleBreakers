@@ -18,6 +18,7 @@ function mod:init()
 	require(self.scriptPath.."/libs/trait")
 	require(self.scriptPath.."/libs/tutorialTips")
 
+	require(self.scriptPath.."functions")
 	require(self.scriptPath.."assets")
 	require(self.scriptPath.."palette")
 	--require(self.scriptPath.."achievements")
@@ -41,6 +42,17 @@ function mod:init()
 		"Diagonal launch",
 		"Launching sawblade can also be diagonal.",
 		{enabled = false}
+	)
+
+
+	modApi:addGenerationOption("option_rift_area",
+		"Rift Inducer's second area",
+		[[Second area can be lines from the first point, squares around it or "diamond-shaped" (manhattan distance).]],
+		{	--1: lines, 2: squares, 3: manhattan
+			values = {1, 2, 3},
+			value = 3,
+			strings = { "Lines", "Squares", "Manhattan" }
+		}
 	)
 end
 

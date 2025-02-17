@@ -2,7 +2,7 @@ local mod = mod_loader.mods[modApi.currentMod]
 local resourcePath = mod.resourcePath
 local mechPath = resourcePath .."img/mechs/"
 
-----------------
+------------------
 --- TRAIT ICON ---
 ------------------
 modApi:appendAsset("img/combat/icons/icon_grid_mech_trait.png", resourcePath.."img/combat/icons/icon_grid_mech_trait.png")
@@ -127,7 +127,7 @@ end
 
 local a = ANIMS
 a.mech_sawblade =         a.MechUnit:new{Image = "units/player/mech_sawblade.png",          PosX = -20, PosY =  -5 }
-a.mech_sawbladea =        a.MechUnit:new{Image = "units/player/mech_sawblade_a.png",        PosX = -18, PosY = -12, NumFrames = 4 }
+a.mech_sawbladea =        a.MechUnit:new{Image = "units/player/mech_sawblade_a.png",        PosX = -18, PosY =  -7, NumFrames = 4 }
 a.mech_sawbladew =        a.MechUnit:new{Image = "units/player/mech_sawblade_w.png",        PosX = -20, PosY =   4 }
 a.mech_sawblade_broken =  a.MechUnit:new{Image = "units/player/mech_sawblade_broken.png",   PosX = -20, PosY =  -5 }
 a.mech_sawbladew_broken = a.MechUnit:new{Image = "units/player/mech_sawblade_w_broken.png", PosX = -20, PosY =  -5 }
@@ -150,7 +150,7 @@ end
 
 local a = ANIMS
 a.mech_grid =         a.MechUnit:new{Image = "units/player/mech_grid.png",          PosX = -20, PosY =  -5 }
-a.mech_grida =        a.MechUnit:new{Image = "units/player/mech_grid_a.png",        PosX = -20, PosY = -30, NumFrames = 4 }
+a.mech_grida =        a.MechUnit:new{Image = "units/player/mech_grid_a.png",        PosX = -20, PosY = -25, NumFrames = 4 }
 a.mech_gridw =        a.MechUnit:new{Image = "units/player/mech_grid_w.png",        PosX = -20, PosY =   4 }
 a.mech_grid_broken =  a.MechUnit:new{Image = "units/player/mech_grid_broken.png",   PosX = -20, PosY =  -5 }
 a.mech_gridw_broken = a.MechUnit:new{Image = "units/player/mech_grid_w_broken.png", PosX = -20, PosY =  -5 }
@@ -172,9 +172,9 @@ for _, file in ipairs(files) do
 end
 
 local a = ANIMS
-a.mech_dislocation =         a.MechUnit:new{Image = "units/player/mech_dislocation.png",          PosX = -20, PosY =  -5 }
-a.mech_dislocationa =        a.MechUnit:new{Image = "units/player/mech_dislocation_a.png",        PosX = -15, PosY =  -4, NumFrames = 4 }
-a.mech_dislocationw =        a.MechUnit:new{Image = "units/player/mech_dislocation_w.png",        PosX = -20, PosY =   4 }
-a.mech_dislocation_broken =  a.MechUnit:new{Image = "units/player/mech_dislocation_broken.png",   PosX = -20, PosY =  -5 }
-a.mech_dislocationw_broken = a.MechUnit:new{Image = "units/player/mech_dislocation_w_broken.png", PosX = -20, PosY =  -5 }
+a.mech_dislocation =         a.MechUnit:new{Image = "units/player/mech_dislocation.png",          PosX = -17, PosY =  -5 }
+a.mech_dislocationa =        a.MechUnit:new{Image = "units/player/mech_dislocation_a.png",        PosX = -17, PosY =  -4, NumFrames = 4 }
+a.mech_dislocationw =        a.MechUnit:new{Image = "units/player/mech_dislocation_w.png",        PosX = -17, PosY =   4 }
+a.mech_dislocation_broken =  a.MechUnit:new{Image = "units/player/mech_dislocation_broken.png",   PosX = -17, PosY =  -5 }
+a.mech_dislocationw_broken = a.MechUnit:new{Image = "units/player/mech_dislocation_w_broken.png", PosX = -17, PosY =  -5 }
 a.mech_dislocation_ns =      a.MechIcon:new{Image = "units/player/mech_dislocation_ns.png" }

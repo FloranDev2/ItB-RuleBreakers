@@ -1,7 +1,18 @@
+---------------
+--- IMPORTS ---
+---------------
+
 local mod = mod_loader.mods[modApi.currentMod]
 
-local path = mod_loader.mods[modApi.currentMod].scriptPath
+local path = mod.scriptPath
 local customAnim = require(path.."libs/customAnim")
+
+local functions = require(path.."functions")
+
+
+---------------
+--- OPTIONS ---
+---------------
 
 local smoothedLine = true
 modApi.events.onModLoaded:subscribe(function(id)
@@ -17,41 +28,10 @@ modApi.events.onModLoaded:subscribe(function(id)
 	diagonalLaunch = options["option_diagonal_launch"].enabled
 end)
 
-------------------------
---- HELPER FUNCTIONS ---
-------------------------
 
-local function isMission()
-	local mission = GetCurrentMission()
-
-	return true
-		and isGame()
-		and mission ~= nil
-		and mission ~= Mission_Test
-end
-
-local function missionData()
-	local mission = GetCurrentMission()
-
-	if mission.truelch_RuleBreakers == nil then
-		mission.truelch_RuleBreakers = {}
-	end
-
-	if mission.truelch_RuleBreakers.sawAmount == nil then
-		mission.truelch_RuleBreakers.sawAmount = {}
-	end
-
-	return mission.truelch_RuleBreakers
-end
-
-
-
-local function isSawbladePawn(pawn)
-	if pawn ~= nil and (pawn:GetType() == "truelch_Sawblade" or pawn:GetType() == "truelch_Sawblade_A") then
-		return true
-	end
-	return false
-end
+--------------
+--- WEAPON ---
+--------------
 
 truelch_SawbladeLauncher = Skill:new{
 	--Infos
@@ -91,8 +71,11 @@ truelch_SawbladeLauncher = Skill:new{
 		Enemy  = Point(2, 1),
 		Enemy2 = Point(2, 0),
 
+		Friendly = Point(0, 0),
+
 		Target = Point(2, 0),
 		CustomPawn = "truelch_SawbladeMech",
+		--CustomPawn = "truelch_Sawblade", --need to find something else to customize friendlies
 		CustomEnemy = "Scarab1",
 	}
 }
@@ -119,56 +102,23 @@ truelch_SawbladeLauncher_AB = truelch_SawbladeLauncher:new{
 	EscalatingDamage = 1,
 }
 
-
-function truelch_SawbladeLauncher:SetSawblade(value)
-	if Pawn == nil then return end --should now happen
-
-	local pawnId = Pawn:GetId()
-	local oldValue = missionData().sawAmount[pawnId]
-
-	--Update anims
-	if oldValue == 0 and newValue == 1 then
-		customAnim:add(pawnId, self.Anim)
-	elseif oldValue == 1 and newValue == 0 then
-		customAnim:rem(pawnId, self.Anim)
-	end
-
-	--Apply value
-
-end
-
-
-function truelch_SawbladeLauncher:AddSawblade(incr)
-	if Pawn == nil then return end --should now happen
-
-	local oldValue = missionData().sawAmount[pawn:GetId()]
-	newValue = oldValue + incr
-
-	--Limits
-	if missionData().sawAmount[Pawn:GetId()] < 0 then
-		missionData().sawAmount[Pawn:GetId()] = 0
-	elseif missionData().sawAmount[Pawn:GetId()] > 1 then
-		missionData().sawAmount[Pawn:GetId()] = 1
-	end
-
-	--Apply value
-	truelch_setSawblade(Pawn, newValue)
-end
-
-function truelch_SawbladeLauncher:GetSawbladeAmount()
-	if missionData().sawAmount[Pawn:GetId()] == nil then
-		self:SetSawBlade(0)
-	end
-	return missionData().sawAmount[Pawn:GetId()]
-end
-
 function truelch_SawbladeLauncher:GetTargetArea_Normal(point)
 	local ret = PointList()
 
-	local amount = self:GetSawbladeAmount()
-	--LOGF("truelch_SawbladeLauncher:GetTargetArea_Normal -> amount: %s", tostring(amount))
+	local amount = functions:getSawbladeAmount(Pawn)
 
 	if amount == 0 then
+		for j = 0, 7 do
+			for i = 0, 7 do
+				local curr = Point(i, j)
+				if curr == point then --to reload
+					ret:push_back(curr)
+				elseif functions:isSawbladePos(curr) or functions:isReinforcedSawbladePos(curr) then
+					ret:push_back(curr)
+				end
+			end
+		end
+	elseif amount == 1 then
 		if diagonalLaunch then
 			for j = -self.Range, self.Range do
 				for i = -self.Range, self.Range do
@@ -182,18 +132,6 @@ function truelch_SawbladeLauncher:GetTargetArea_Normal(point)
 			for dir = DIR_START, DIR_END do
 				for i = 1, self.Range do
 					local curr = point + DIR_VECTORS[dir]*i
-					ret:push_back(curr)
-				end
-			end
-		end		
-	elseif amount == 1 then
-		for j = 0, 7 do
-			for i = 0, 7 do
-				local curr = Point(i, j)
-				local pawn = Board:GetPawn(curr)
-				if curr == point then --to reload
-					ret:push_back(curr)
-				elseif isSawbladePawn(pawn) then
 					ret:push_back(curr)
 				end
 			end
@@ -252,10 +190,14 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 				ret:AddDamage(spaceDamage)
 				regular = false
 			elseif not Board:IsBlocked(p2, PATH_PROJECTILE) then
+				--[[
 				ret:AddDamage(spaceDamage)
 				local spawnSawblade = SpaceDamage(p2, 0)
 				spawnSawblade.sPawn = self.SawbladePawn --doesn't preview the spawned unit
 				ret:AddDamage(spawnSawblade)
+				]]
+				spaceDamage.sPawn = self.SawbladePawn
+				ret:AddDamage(spaceDamage) --test
 				regular = false
 			end
 		end
@@ -266,7 +208,10 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 	end
 
 	--In any case, right?
-	ret:AddScript("self:AddSawblade(Pawn, -1)")
+	--ret:AddScript("self:AddSawblade(Pawn, -1)")
+	if not Board:IsTipImage() then
+		ret:AddScript("functions:addSawBlade(Pawn, -1)")
+	end
 
 	return ret
 end
@@ -290,7 +235,7 @@ local function computeLine(ret, p1, p2)
 		local dir = GetDirection(p1 - p2)
 		for i = 1, p1:Manhattan(p2) - 1 do
 			local curr = p2 + DIR_VECTORS[dir] * i
-			LOG("curr: "..curr:GetString())
+			--LOG("curr: "..curr:GetString())
 			--table.insert(linePoints, curr)
 
 			local damage = SpaceDamage(curr, 3)
@@ -329,9 +274,7 @@ end
 function truelch_SawbladeLauncher:ReturnSawblade(p1, p2)
 	local ret = SkillEffect()
 
-	local pawn = Board:GetPawn(p2)
-
-	if not isSawbladePawn(pawn) then
+	if not functions:isSawbladePos(p2) and not functions:isReinforcedSawbladePos(p2) then
 		LOG("----------- WTF")
 		return ret
 	end
@@ -349,7 +292,9 @@ function truelch_SawbladeLauncher:ReturnSawblade(p1, p2)
 	ret:AddDamage(killSawblade)
 
 	--Add sawblade
-	ret:AddScript("truelch_addSawBlade(Pawn)")
+	if not Board:IsTipImage() then
+		ret:AddScript("functions:addSawBlade(Pawn, 1)")
+	end
 
 	return ret
 end
@@ -357,7 +302,7 @@ end
 function truelch_SawbladeLauncher:RebuildSawblade(p1, p2)
 	local ret = SkillEffect()
 
-	ret:AddScript("truelch_addSawBlade(Pawn)")
+	ret:AddScript("functions:addSawBlade(Pawn, 1)")
 
 	--Push adjacent (Option?)
 	for dir = DIR_START, DIR_END do
@@ -373,30 +318,21 @@ end
 
 function truelch_SawbladeLauncher:GetSkillEffect_Normal(p1, p2)
 	local ret = SkillEffect()
-	local status = self:GetSawbladeAmount()
 
-	if status == nil or status == -1 then --error!
-		--[[
-		LOG("----------- return error")
-		return ret --maybe we should attempt to rebuild the sawblade in that case?
-		]]
-		LOG("status was nil or -1, let's put it to 0 to fix that")
-		--Let's consider that the mech has no sawblade
+	local amount = functions:getSawbladeAmount(Pawn)
 
-		--truelch_addSawBlade(Pawn)
-		--status = 0
-
+	if amount == nil or amount == -1 then
+		functions:setSawblade(Pawn, 0)
+		amount = 0
 	end
 
-	LOGF("truelch_SawbladeLauncher:GetSkillEffect_Normal -> status: %s", tostring(status))
-
-	if status == 0 then
+	if amount >= 1 then
 		return self:LaunchSawblade(p1, p2)
 	else
 		local pawn = Board:GetPawn(p2)
 		if p2 == p1 then
 			return self:RebuildSawblade(p1, p2)
-		elseif isSawbladePawn(pawn) then
+		elseif functions:isSawbladePos(p2) or functions:isReinforcedSawbladePos(p2) then
 			return self:ReturnSawblade(p1, p2)
 		else
 			LOG("----------- WTF")
@@ -417,7 +353,7 @@ function truelch_SawbladeLauncher:GetSkillEffect_TipImage(p1, p2)
 
 	elseif self.TipIndex == 1 then
 		--Return sawblade
-		Board:AddAlert(p1, "Launch Sawblade")
+		Board:AddAlert(p1, "Return Sawblade")
 		self.TipIndex = 0
 		return self:ReturnSawblade(p1, p2)
 
@@ -442,7 +378,8 @@ local function initSawbladeLaunchers()
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_A") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_B") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_AB")) then
-			truelch_addSawBlade(mech)
+			--functions:addSawblade(mech, 1)
+			functions:setSawblade(mech, 1)
 		end
 	end
 end
@@ -455,58 +392,44 @@ local function EVENT_onMissionNextPhaseCreated(prevMission, nextMission)
 	initSawbladeLaunchers()
 end
 
-local function EVENT_onPawnKilled(mission, pawn)
-	if pawn == nil then return end
-
-	if isSawbladePawn(pawn) then
-		for i = 0, 2 do
-			if missionData().sawStatus ~= nil and
-					missionData().sawStatus[i] ~= nil and
-					missionData().sawStatus[i] == pawn:GetId() then
-				missionData().sawStatus[i] = 1 --dead
-			end
-		end
-	end
-end
-
 local function EVENT_onSkillEnd(mission, pawn, weaponId, p1, p2)
-    if type(weaponId) == 'table' then weaponId = weaponId.__Id end
+    if not functions:isMission() then return end
+
+	if type(weaponId) == 'table' then weaponId = weaponId.__Id end
 
 	if weaponId == "truelch_SawbladeLauncher" or
 			weaponId == "truelch_SawbladeLauncher_A" or
 			weaponId == "truelch_SawbladeLauncher_B" or
 			weaponId == "truelch_SawbladeLauncher_AB" then
-		missionData().lastLauncher = pawn:GetId()
+		functions:missionData().lastLauncher = pawn:GetId()
+		functions:missionData().sawLaunchTgt = p2
+	else
+		functions:missionData().sawLaunchTgt = nil
 	end
 end
-
-local function EVENT_onPawnTracked(mission, pawn)
-	if pawn == nil then
-		LOG("pawn is nil! wtf")
-		return
-	end
-
-	if isSawbladePawn(pawn) and missionData().lastLauncher ~= nil then
-		local launcherId = missionData().lastLauncher
-		--was putting sawblade's id before, but no longer needed, I think I could ditch that and put the status to 1 in the weapon's skill effect
-		missionData().sawStatus[launcherId] = 1
-	end
-end
-
 
 --If p2 was targeting a building and this building is destroyed by the sawblade launcher, spawns a sawblade!
 local function EVENT_onBuildingDestroyed(mission, buildingData)
 	LOG("Building at "..buildingData.loc:GetString().." was destroyed!")
 
-	if buildingData.loc == p2 then
-	end
+	if functions:missionData().sawLaunchTgt ~= nil and buildingData.loc == functions:missionData().sawLaunchTgt then
+		local launcher = functions:missionData().lastLauncher
+		if launcher ~= nil then
+			if launcher:IsWeaponPowered("truelch_SawbladeLauncher") or launcher:IsWeaponPowered("truelch_SawbladeLauncher_B") then
+				--Normal sawblade
 
+			elseif launcher:IsWeaponPowered("truelch_SawbladeLauncher_A") or launcher:IsWeaponPowered("truelch_SawbladeLauncher_AB") then
+				--Reinforced sawblade
+				local spawnSawblade = SpaceDamage(p2, 0)
+				spawnSawblade.sPawn = ""
+				ret:AddDamage(spawnSawblade)
+			end
+		end
+	end
 end
 
 
 modApi.events.onMissionStart:subscribe(EVENT_onMissionStarted)
 modApi.events.onMissionNextPhaseCreated:subscribe(EVENT_onMissionNextPhaseCreated)
-modapiext.events.onPawnKilled:subscribe(EVENT_onPawnKilled)
 modapiext.events.onSkillEnd:subscribe(EVENT_onSkillEnd)
-modapiext.events.onPawnTracked:subscribe(EVENT_onPawnTracked)
 modapiext.events.onBuildingDestroyed:subscribe(EVENT_onBuildingDestroyed)
