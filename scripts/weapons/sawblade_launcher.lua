@@ -3,10 +3,7 @@
 ---------------
 
 local mod = mod_loader.mods[modApi.currentMod]
-
 local path = mod.scriptPath
-local customAnim = require(path.."libs/customAnim")
-
 local functions = require(path.."functions")
 
 
@@ -190,14 +187,8 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 				ret:AddDamage(spaceDamage)
 				regular = false
 			elseif not Board:IsBlocked(p2, PATH_PROJECTILE) then
-				--[[
-				ret:AddDamage(spaceDamage)
-				local spawnSawblade = SpaceDamage(p2, 0)
-				spawnSawblade.sPawn = self.SawbladePawn --doesn't preview the spawned unit
-				ret:AddDamage(spawnSawblade)
-				]]
 				spaceDamage.sPawn = self.SawbladePawn
-				ret:AddDamage(spaceDamage) --test
+				ret:AddDamage(spaceDamage)
 				regular = false
 			end
 		end
@@ -208,9 +199,12 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 	end
 
 	--In any case, right?
-	--ret:AddScript("self:AddSawblade(Pawn, -1)")
 	if not Board:IsTipImage() then
-		ret:AddScript("functions:addSawBlade(Pawn, -1)")
+		--LOG("--------------------- Here")
+		--ret:AddScript("functions:zogZog()")
+		--ret:AddScript("zagZag()")
+		--ret:AddScript("functions:addSawBlade(Pawn, -1)")
+		ret:AddScript("truelch_addSawblade(Pawn, -1)")
 	end
 
 	return ret

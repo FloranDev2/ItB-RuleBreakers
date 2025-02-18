@@ -36,8 +36,8 @@ modApi:appendAsset("img/effects/truelch_anim_sawblade.png", resourcePath.."img/e
 
 ANIMS.truelch_anim_sawblade = Animation:new{
 	Image = "effects/truelch_anim_sawblade.png",
-	PosX = 0,
-	PosY = 0,
+	PosX = -17,
+	PosY = -5,
 	Time = 0.08,
 	NumFrames = 1,
 }
@@ -47,8 +47,8 @@ modApi:appendAsset("img/effects/truelch_anim_sawblade_A.png", resourcePath.."img
 
 ANIMS.truelch_anim_sawblade_A = Animation:new{
 	Image = "effects/truelch_anim_sawblade_A.png",
-	PosX = 0,
-	PosY = 0,
+	PosX = -17,
+	PosY = -5,
 	Time = 0.08,
 	NumFrames = 1,
 }

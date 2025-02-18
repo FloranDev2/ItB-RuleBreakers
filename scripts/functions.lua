@@ -3,6 +3,11 @@
 ---------------
 
 local mod = mod_loader.mods[modApi.currentMod]
+local path = mod.scriptPath
+local customAnim = require(path.."libs/customAnim")
+
+--LOG("----------------> customAnim: "..tostring(customAnim))
+
 local this = {}
 
 
@@ -107,12 +112,12 @@ end
 ----------------
 
 function this:isEquippedWithSawbladeLauncher(mech)
-	local ret = mech ~= nil and (mech:IsWeaponPowered("truelch_SawbladeLauncher_A") or
+	local ret = mech ~= nil and (mech:IsWeaponPowered("truelch_SawbladeLauncher") or
 		mech:IsWeaponPowered("truelch_SawbladeLauncher_A") or
 		mech:IsWeaponPowered("truelch_SawbladeLauncher_B") or
 		mech:IsWeaponPowered("truelch_SawbladeLauncher_AB"))
 
-	LOG("isEquippedWithSawbladeLauncher -> mech: "..mech:GetMechName().." -> ret: "..tostring(ret))
+	--LOG("isEquippedWithSawbladeLauncher -> mech: "..mech:GetMechName().." -> ret: "..tostring(ret))
 
 	return ret
 end
@@ -128,13 +133,13 @@ function this:isReinforcedSawbladePos(point)
 end
 
 function this:setSawblade(pawn, newValue)
-	LOG("setSawblade()")
+	--LOG("setSawblade()")
 	if pawn == nil or not this:isEquippedWithSawbladeLauncher(pawn) then
-		LOG(" -> return!")
+		--LOG(" -> return!")
 		return
 	end
 
-	LOG(" -> ok!")
+	--LOG(" -> ok!")
 
 	local pawnId = pawn:GetId()
 
@@ -168,7 +173,8 @@ function this:setSawblade(pawn, newValue)
 
 	--Update anims
 	local anim = "truelch_anim_sawblade" --truelch_anim_sawblade_A
-	if sawbladeLauncher ~= nil and sawbladeLauncher.Anim ~= nil then		
+	--if sawbladeLauncher ~= nil and sawbladeLauncher.Anim ~= nil then
+	if sawbladeLauncher ~= nil and  _G[sawbladeLauncher].Anim ~= nil then
 		--anim = sawbladeLauncher.Anim   --this?
 		anim = _G[sawbladeLauncher].Anim --or this?
 		LOG("----------- it worked! anim: "..anim)
@@ -176,14 +182,18 @@ function this:setSawblade(pawn, newValue)
 
 	if oldValue == 0 and newValue == 1 then
 		LOG("------------> customAnim:add")
-		customAnim:add(pawnId, weapon)
+		customAnim:add(pawnId, anim)
 	elseif oldValue == 1 and newValue == 0 then
 		LOG("------------> customAnim:rem")
-		customAnim:rem(pawnId, weapon)
+		customAnim:rem(pawnId, anim)
 	end
 
 	--Apply value
 	this:missionData().sawAmount[pawn:GetId()] = newValue
+end
+
+function truelch_addSawblade(pawn, incr)
+	this:addSawblade(pawn, incr)
 end
 
 function this:addSawblade(pawn, incr)
@@ -212,25 +222,24 @@ end
 --Return -1 if no sawblade launcher is equipped?
 --or nil?
 function this:getSawbladeAmount(pawn)
-	LOG("getSawbladeAmount()")
+	--LOG("getSawbladeAmount()")
 	if pawn == nil then
-		LOG(" -> return")
+		--LOG(" -> return")
 		return
 	end
 
-	LOG(" -> ok")
+	--LOG(" -> ok")
 
 	local pawnId = pawn:GetId()
 
 	local cond1 = this:isEquippedWithSawbladeLauncher(pawn)
 	local cond2 = this:missionData().sawAmount[pawnId] == nil
 
-	LOGF("cond1: %s, cond2: %s", tostring(cond1), tostring(cond2))
+	--LOGF("cond1: %s, cond2: %s", tostring(cond1), tostring(cond2))
 
 	if cond2 and cond2 then
-		--this:setSawblade(pawn, 0)
-		this:missionData().sawAmount[pawnId] = 0
-		LOG(" -> init sawAmount")
+		this:missionData().sawAmount[pawnId] = 0 --1?
+		--LOG(" -> init sawAmount")
 	end
 
 	return this:missionData().sawAmount[pawnId]
