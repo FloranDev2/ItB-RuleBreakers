@@ -347,6 +347,8 @@ function truelch_SawbladeLauncher:GetSkillEffect_TipImage(p1, p2)
 
 	elseif self.TipIndex == 1 then
 		--Return sawblade
+		--Spawn sawblade at p2
+
 		Board:AddAlert(p1, "Return Sawblade")
 		self.TipIndex = 0
 		return self:ReturnSawblade(p1, p2)
@@ -372,18 +374,32 @@ local function initSawbladeLaunchers()
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_A") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_B") or
 				mech:IsWeaponPowered("truelch_SawbladeLauncher_AB")) then
-			--functions:addSawblade(mech, 1)
 			functions:setSawblade(mech, 1)
 		end
 	end
 end
 
+local initFlag = false
+
 local function EVENT_onMissionStarted(mission)
-	initSawbladeLaunchers()
+	--initSawbladeLaunchers()
+	initFlag = true
 end
 
 local function EVENT_onMissionNextPhaseCreated(prevMission, nextMission)
-	initSawbladeLaunchers()
+	--initSawbladeLaunchers()
+	initFlag = true
+end
+
+local EVENT_onNextTurn = function(mission)
+	--LOG("Currently it is turn of team: " .. Game:GetTeamTurn())
+
+	--During enemy turn to make it less noticeable?
+	--Or during player's turn so he can aknowledge it and have a board alert?
+	if initFlag == true then
+		initFlag = false
+		initSawbladeLaunchers()
+	end
 end
 
 local function EVENT_onSkillEnd(mission, pawn, weaponId, p1, p2)
@@ -395,7 +411,7 @@ local function EVENT_onSkillEnd(mission, pawn, weaponId, p1, p2)
 			weaponId == "truelch_SawbladeLauncher_A" or
 			weaponId == "truelch_SawbladeLauncher_B" or
 			weaponId == "truelch_SawbladeLauncher_AB" then
-		functions:missionData().lastLauncher = pawn:GetId()
+		functions:missionData().lastLauncherId = pawn:GetId()
 		functions:missionData().sawLaunchTgt = p2
 	else
 		functions:missionData().sawLaunchTgt = nil
@@ -404,26 +420,27 @@ end
 
 --If p2 was targeting a building and this building is destroyed by the sawblade launcher, spawns a sawblade!
 local function EVENT_onBuildingDestroyed(mission, buildingData)
-	LOG("Building at "..buildingData.loc:GetString().." was destroyed!")
-
+	--LOG("Building at "..buildingData.loc:GetString().." was destroyed!")
 	if functions:missionData().sawLaunchTgt ~= nil and buildingData.loc == functions:missionData().sawLaunchTgt then
-		local launcher = functions:missionData().lastLauncher
+		local launcher = Board:GetPawn(functions:missionData().lastLauncherId)
 		if launcher ~= nil then
 			if launcher:IsWeaponPowered("truelch_SawbladeLauncher") or launcher:IsWeaponPowered("truelch_SawbladeLauncher_B") then
 				--Normal sawblade
-
+				local spawnSawblade = SpaceDamage(buildingData.loc, 0)
+				spawnSawblade.sPawn = "truelch_Sawblade"
+				Board:AddEffect(spawnSawblade)
 			elseif launcher:IsWeaponPowered("truelch_SawbladeLauncher_A") or launcher:IsWeaponPowered("truelch_SawbladeLauncher_AB") then
 				--Reinforced sawblade
-				local spawnSawblade = SpaceDamage(p2, 0)
-				spawnSawblade.sPawn = ""
-				ret:AddDamage(spawnSawblade)
+				local spawnSawblade = SpaceDamage(buildingData.loc, 0)
+				spawnSawblade.sPawn = "truelch_Sawblade_A"
+				Board:AddEffect(spawnSawblade)
 			end
 		end
 	end
 end
 
-
 modApi.events.onMissionStart:subscribe(EVENT_onMissionStarted)
 modApi.events.onMissionNextPhaseCreated:subscribe(EVENT_onMissionNextPhaseCreated)
+modApi.events.onNextTurn:subscribe(EVENT_onNextTurn)
 modapiext.events.onSkillEnd:subscribe(EVENT_onSkillEnd)
 modapiext.events.onBuildingDestroyed:subscribe(EVENT_onBuildingDestroyed)

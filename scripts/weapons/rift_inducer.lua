@@ -17,13 +17,18 @@ Stuff to check:
 str_battery1
 ]]
 
+--[[
+LOG(save_table(GetCurrentMission()))
+["QueuedSpawns"]
+]]
+
 local mod = mod_loader.mods[modApi.currentMod]
 local riftAreaVersion --1: lines, 2: squares, 3: manhattan
 modApi.events.onModLoaded:subscribe(function(id)
 	if id ~= mod.id then return end
 	local options = mod_loader.currentModContent[id].options
 	riftAreaVersion = options["option_rift_area"].value
-	LOG("riftAreaVersion: "..tostring(riftAreaVersion))
+	--LOG("riftAreaVersion: "..tostring(riftAreaVersion))
 end)
 
 local riftPawnExceptions = {
@@ -175,7 +180,7 @@ function truelch_RiftInducer:GetSecAreaPoints(p2)
 	points = {}
 
 	--riftAreaVersion --1: lines, 2: squares, 3: manhattan
-	LOG("riftAreaVersion: "..tostring(riftAreaVersion))
+	--LOG("riftAreaVersion: "..tostring(riftAreaVersion))
 	
 	if riftAreaVersion == 1 then
 		--Lines
@@ -367,6 +372,57 @@ function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
 	if delay ~= FULL_DELAY then
 		ret:AddTeleport(p3, p2, FULL_DELAY)
 	end
+
+	--[[
+	["QueuedSpawns"] = {
+		[1] = {
+			["type"] = "Bouncer1", 
+			["id"] = 101, 
+			["turns"] = 1, 
+			["location"] = Point( 6, 6 ) 
+		}, 
+		[2] = {
+			["type"] = "Leaper1", 
+			["id"] = 102, 
+			["turns"] = 1, 
+			["location"] = Point( 6, 4 ) 
+		} 
+	},
+	]]
+
+	--SWAP SPAWNS
+	--LOG("-------------- SWAP SPAWNS:")
+	for _, spawn in ipairs(GetCurrentMission().QueuedSpawns) do
+		--LOG("-------------- spawn: "..save_table(spawn))
+		if spawn.location == p2 then
+			--LOG("--------------> spawn.location == p2")
+			--ret:AddScript("spawn.location = "..p3:GetString()) --attempt to index global 'spawn' (a nil value)
+		elseif spawn.location == p3 then
+			--LOG("--------------> spawn.location == p3")
+			--ret:AddScript("spawn.location = "..p2:GetString()) --attempt to index global 'spawn' (a nil value)
+		end
+	end
+
+	ret:AddScript([[GetCurrentMission().QueuedSpawns = {}]])
+
+	ret:AddScript(string.format([[
+		for _, spawn in ipairs(GetCurrentMission().QueuedSpawns) do
+			LOG("-------------- spawn: "..save_table(spawn))
+			if spawn.location == %s then
+				spawn.location = %s
+			elseif spawn.location == %s then
+				spawn.location = %s
+			end
+		end
+	]], p2:GetString(), p3:GetString(), p3:GetString(), p2:GetString()))
+
+	--function Mission:RemoveSpawnPoint(point)
+	--function Mission:SpawnPawn(location, pawnType)
+	--Mission:SpawnPawnInternal(location, pawn)
+
+	--https://github.com/search?q=repo%3Aitb-community%2FITB-ModLoader%20QueuedSpawns&type=code
+	--https://github.com/itb-community/ITB-ModLoader/blob/675bd7d48d10b0f9230210937560ee7e551b5d18/scripts/mod_loader/altered/spawn_point.lua#L50
+	--https://github.com/itb-community/ITB-ModLoader/blob/675bd7d48d10b0f9230210937560ee7e551b5d18/scripts/mod_loader/altered/missions.lua#L18
 	
 	return ret
 end

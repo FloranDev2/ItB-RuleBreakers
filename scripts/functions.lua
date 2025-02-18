@@ -160,9 +160,14 @@ function this:setSawblade(pawn, newValue)
 	local sawbladeLauncher = nil
 	for i = 1, 2 do --weapons index
 		local weapon = weapons[i]
-		if type(weapon) == 'table' then weapon = weapon.__Id end
-		if string.find(weapon, "truelch_SawbladeLauncher") ~= nil then
-			sawbladeLauncher = weapon
+		if weapon ~= nil then
+			if type(weapon) == 'table' then
+				weapon = weapon.__Id
+			end
+			
+			if string.find(weapon, "truelch_SawbladeLauncher") ~= nil then
+				sawbladeLauncher = weapon
+			end
 		end
 	end
 

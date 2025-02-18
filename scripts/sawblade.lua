@@ -38,6 +38,7 @@ truelch_Sawblade = Pawn:new{
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
 	Corpse = false,
+	Flying = true,
 }
 AddPawn("truelch_Sawblade")
 
