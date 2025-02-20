@@ -178,18 +178,15 @@ function this:setSawblade(pawn, newValue)
 
 	--Update anims
 	local anim = "truelch_anim_sawblade" --truelch_anim_sawblade_A
-	--if sawbladeLauncher ~= nil and sawbladeLauncher.Anim ~= nil then
 	if sawbladeLauncher ~= nil and  _G[sawbladeLauncher].Anim ~= nil then
-		--anim = sawbladeLauncher.Anim   --this?
-		anim = _G[sawbladeLauncher].Anim --or this?
-		LOG("----------- it worked! anim: "..anim)
+		anim = _G[sawbladeLauncher].Anim
 	end
 
 	if oldValue == 0 and newValue == 1 then
-		LOG("------------> customAnim:add")
+		--LOG("------------> customAnim:add")
 		customAnim:add(pawnId, anim)
 	elseif oldValue == 1 and newValue == 0 then
-		LOG("------------> customAnim:rem")
+		--LOG("------------> customAnim:rem")
 		customAnim:rem(pawnId, anim)
 	end
 

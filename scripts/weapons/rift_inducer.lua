@@ -196,7 +196,6 @@ function truelch_RiftInducer:GetSecAreaPoints(p2)
 	end
 	]]
 	
-	--[[
 	if riftAreaVersion == 1 then
 		--Lines
 		for dir = DIR_START, DIR_END do
@@ -234,7 +233,6 @@ function truelch_RiftInducer:GetSecAreaPoints(p2)
 	else
 		LOG("truelch_RiftInducer:GetSecAreaPoints -> unexpected riftAreaVersion: "..tostring(riftAreaVersion))
 	end
-	]]
 
 	--Return
 	return points
@@ -260,7 +258,14 @@ function truelch_RiftInducer:GetSkillEffect(p1, p2)
 		damage.sImageMark = "advanced/combat/icons/icon_teleport_glow.png"
 	end
 
-	--damage.sImageMark = "combat/icons/icon_swap_impossible.png"
+	--Preview impossible
+	for _, curr in pairs(self:GetSecAreaPoints(p2)) do
+		if not isLocOkForRift() then
+			local damage = SpaceDamage(curr, 0)
+			damage.sImageMark = "combat/icons/icon_swap_impossible.png"
+			ret:AddDamage(damage)
+		end
+	end
 
 	ret:AddArtillery(damage, self.UpShot)
 
