@@ -23,6 +23,9 @@ LOG(save_table(GetCurrentMission()))
 ]]
 
 local mod = mod_loader.mods[modApi.currentMod]
+local path = mod.scriptPath
+local functions = require(path.."functions")
+
 local riftAreaVersion --1: lines, 2: squares, 3: manhattan
 modApi.events.onModLoaded:subscribe(function(id)
 	if id ~= mod.id then return end
@@ -181,7 +184,19 @@ function truelch_RiftInducer:GetSecAreaPoints(p2)
 
 	--riftAreaVersion --1: lines, 2: squares, 3: manhattan
 	--LOG("riftAreaVersion: "..tostring(riftAreaVersion))
+
+	--[[
+	for j = 0, 7 do
+		for i = 0, 7 do
+			local curr = Point(i, j)
+			if curr ~= p2 then
+				points[#points + 1] = curr
+			end
+		end
+	end
+	]]
 	
+	--[[
 	if riftAreaVersion == 1 then
 		--Lines
 		for dir = DIR_START, DIR_END do
@@ -219,6 +234,7 @@ function truelch_RiftInducer:GetSecAreaPoints(p2)
 	else
 		LOG("truelch_RiftInducer:GetSecAreaPoints -> unexpected riftAreaVersion: "..tostring(riftAreaVersion))
 	end
+	]]
 
 	--Return
 	return points
@@ -254,6 +270,7 @@ end
 function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
 	local ret = PointList()
 	
+	--[[
 	for dir = DIR_START, DIR_END do
 		for i = 1, self.SecondTargetRange do
 			local curr = p2 + DIR_VECTORS[dir] * i
@@ -263,6 +280,11 @@ function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
 				ret:push_back(curr)
 			end
 		end
+	end
+	]]
+
+	for _, curr in pairs(self:GetSecAreaPoints(p2)) do
+		ret:push_back(curr)
 	end
 
 	return ret
@@ -311,6 +333,26 @@ function truelch_RiftInducer:ComputeTile(ret, damage, pA, pB)
 	TODO:
 	- crack (not literally, come on)
 	]]
+end
+
+--Exclude p2 and p3
+--Take points that are actually valid (no mountains, lava, water, ice, etc.)
+local function GetValidTempSpawnPoint(p2, p3)
+
+	--return Point(-1, -1) --test
+
+	for j = 0, 7 do
+		for i = 0, 7 do
+			local curr = Point(i, j)
+			if curr ~= p2 and curr ~= p3 and Board:IsBlocked(curr, PATH_PROJECTILE) and Board:GetTerrain(curr) == TERRAIN_ROAD then
+				return curr
+			end
+		end
+	end
+
+	LOG("GetValidTempSpawnPoint: couldn't find a fitting temporary space!")
+
+	return Point(-1, -1)
 end
 
 function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
@@ -373,56 +415,140 @@ function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
 		ret:AddTeleport(p3, p2, FULL_DELAY)
 	end
 
+	--SWAP SPAWNS (-> moved to the skill ended because swapping two spawns is buggy)
+	--or I could just do nothing when we swap 2 spawns
+
 	--[[
-	["QueuedSpawns"] = {
-		[1] = {
-			["type"] = "Bouncer1", 
-			["id"] = 101, 
-			["turns"] = 1, 
-			["location"] = Point( 6, 6 ) 
-		}, 
-		[2] = {
-			["type"] = "Leaper1", 
-			["id"] = 102, 
-			["turns"] = 1, 
-			["location"] = Point( 6, 4 ) 
-		} 
-	},
-	]]
+	local m = GetCurrentMission()
 
-	--SWAP SPAWNS
-	--LOG("-------------- SWAP SPAWNS:")
-	for _, spawn in ipairs(GetCurrentMission().QueuedSpawns) do
-		--LOG("-------------- spawn: "..save_table(spawn))
-		if spawn.location == p2 then
-			--LOG("--------------> spawn.location == p2")
-			--ret:AddScript("spawn.location = "..p3:GetString()) --attempt to index global 'spawn' (a nil value)
-		elseif spawn.location == p3 then
-			--LOG("--------------> spawn.location == p3")
-			--ret:AddScript("spawn.location = "..p2:GetString()) --attempt to index global 'spawn' (a nil value)
-		end
+	local spawn2 = m:GetSpawnPointData(p2)
+	local spawn3 = m:GetSpawnPointData(p3)
+
+	if spawn2 ~= nil and spawn3 ~= nil then
+		--Swap. But idk if it'll work if I do this:
+		--Or maybe I should move temporarily one of them to a tile free of spawn and then move it back
+		local tmpPos = GetValidTempSpawnPoint(p2, p3)
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", p2:GetString(), tmpPos:GetString()))
+		ret:AddDelay(0.5)
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", p3:GetString(), p2:GetString()))
+		ret:AddDelay(0.5)
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", tmpPos:GetString(), p3:GetString()))
+
+	elseif spawn2 ~= nil then
+		--Move spawn2 to p3
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", p2:GetString(), p3:GetString()))
+
+	elseif spawn3 ~= nil then
+		--Move spawn3 to p2
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", p3:GetString(), p2:GetString()))
+
+	else
+		--No spawn on both tiles -> do nothing
+
 	end
-
-	ret:AddScript([[GetCurrentMission().QueuedSpawns = {}]])
-
-	ret:AddScript(string.format([[
-		for _, spawn in ipairs(GetCurrentMission().QueuedSpawns) do
-			LOG("-------------- spawn: "..save_table(spawn))
-			if spawn.location == %s then
-				spawn.location = %s
-			elseif spawn.location == %s then
-				spawn.location = %s
-			end
-		end
-	]], p2:GetString(), p3:GetString(), p3:GetString(), p2:GetString()))
-
-	--function Mission:RemoveSpawnPoint(point)
-	--function Mission:SpawnPawn(location, pawnType)
-	--Mission:SpawnPawnInternal(location, pawn)
-
-	--https://github.com/search?q=repo%3Aitb-community%2FITB-ModLoader%20QueuedSpawns&type=code
-	--https://github.com/itb-community/ITB-ModLoader/blob/675bd7d48d10b0f9230210937560ee7e551b5d18/scripts/mod_loader/altered/spawn_point.lua#L50
-	--https://github.com/itb-community/ITB-ModLoader/blob/675bd7d48d10b0f9230210937560ee7e551b5d18/scripts/mod_loader/altered/missions.lua#L18
+	]]	
 	
 	return ret
 end
+
+--[[
+LOG(save_table(GetCurrentMission().QueuedSpawns))
+
+[1] = {
+	["type"] = "Firefly1", 
+	["location"] = Point( 5, 3 ), 
+	["turns"] = 1, 
+	["id"] = 103 
+},
+[2] = {
+	["type"] = "Moth1", 
+	["location"] = Point( 7, 4 ), 
+	["turns"] = 1, 
+	["id"] = 104 
+}
+]]
+local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
+    if not functions:isMission() then return end
+
+	if type(weaponId) == 'table' then weaponId = weaponId.__Id end
+
+	if weaponId == "truelch_RiftInducer" or
+			weaponId == "truelch_RiftInducer_A" or
+			weaponId == "truelch_RiftInducer_B" or
+			weaponId == "truelch_RiftInducer_AB" then
+		
+		local spawn2 = mission:GetSpawnPointData(p2)
+		local spawn3 = mission:GetSpawnPointData(p3)
+
+		if spawn2 ~= nil and spawn3 ~= nil then
+			--I can just... do nothing
+			--The only thing that'd make it visible that I didn't swap emerge points is the pilot that reveals emerging vek lol
+			--Or I could change the spawn data from both in a single frame
+			--LOG("---------------- [A] Swap")
+
+			--V0: do nothing lol
+
+			--V1: moving p2 to a temporary point -> move p3 to p2 -> move temp (p2) to p3
+			--Note: trying to swap two spawns in the same frame will result on a spawn overriding another
+			--I've also tried moving temporarily to (-1, -1) but it just put back in a very random position for some reason
+			--[[
+			local tmpPos = GetValidTempSpawnPoint(p2, p3)
+			mission:MoveSpawnPoint(p2, tmpPos)
+			modApi:scheduleHook(550, function()
+				mission:MoveSpawnPoint(p3, p2)
+				modApi:scheduleHook(550, function()
+					mission:MoveSpawnPoint(tmpPos, p3)
+				end)
+			end)
+			]]
+
+			--V2: inverting data (or pawns if swapping data doesn't work)
+			--Okay, doing it at the same frame will make p2 emerge!
+			--V2a
+			--[[
+			mission:ModifySpawnPoint(p2, spawn3)
+			modApi:scheduleHook(550, function()
+				mission:ModifySpawnPoint(p3, spawn2)
+			end)
+			]]
+
+			--V2b
+			--Maybe I should have modified the spawn data location and injected afterwards
+			--Making it in the same frame emerge both (okay, even with the delay it emerges both)
+			--[[
+			spawn2.location = p3
+			spawn3.location = p2
+			mission:ModifySpawnPoint(p2, spawn3)
+			modApi:scheduleHook(550, function()
+				mission:ModifySpawnPoint(p3, spawn2)
+			end)
+			]]
+
+			--V3: just change pawn type
+			--This also emerges both... *sigh*
+			--[[
+			mission:ChangeSpawnPointPawnType(p2, spawn3.type)
+				modApi:scheduleHook(550, function()
+			mission:ChangeSpawnPointPawnType(p3, spawn2.type)
+			end)
+			]]
+
+		elseif spawn2 ~= nil then
+			--Move spawn2 to p3
+			--LOG("---------------- [B] p2 -> p3")
+			mission:MoveSpawnPoint(p2, p3)
+
+		elseif spawn3 ~= nil then
+			--Move spawn3 to p2
+			--LOG("---------------- [C] p3 -> p2")
+			mission:MoveSpawnPoint(p3, p2)
+
+		else
+			--No spawn on both tiles -> do nothing
+			--LOG("---------------- [D] no spawns")
+
+		end
+	end
+end
+
+modapiext.events.onFinalEffectEnd:subscribe(EVENT_onFinalEffectEnd)

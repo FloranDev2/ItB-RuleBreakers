@@ -219,19 +219,14 @@ local function distancePointLine(px, py, x1, y1, x2, y2)
 	return distance
 end
 
+--TODO: make it usable for both launch and return
+--Also give a list of dist / damage
 local function computeLine(ret, p1, p2)
-	--LOGF("----------- computeLine(p1: %s, p2: %s)", p1:GetString(), p2:GetString())
-	--local linePoints = {}
-
 	if p1.x == p2.x or p1.y == p2.y then
-		--LOG("----------- Aligned")
 		--Aligned
 		local dir = GetDirection(p1 - p2)
 		for i = 1, p1:Manhattan(p2) - 1 do
 			local curr = p2 + DIR_VECTORS[dir] * i
-			--LOG("curr: "..curr:GetString())
-			--table.insert(linePoints, curr)
-
 			local damage = SpaceDamage(curr, 3)
 			ret:AddDamage(damage)
 		end

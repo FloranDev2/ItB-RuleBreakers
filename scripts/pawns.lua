@@ -35,8 +35,8 @@ truelch_SawbladeMech = Pawn:new{
 	MoveSpeed = 4, --idea: 3 + 1 if the sawblade isn't on the mech?
 	Image = "mech_sawblade", --"MechPierce"
 	ImageOffset = palette,
-	SkillList = { "truelch_SawbladeLauncher"--[[, "truelch_debug_weapon"]] },
-	SkillList = { "truelch_SawbladeLauncher", "Ranged_DeployBomb" },
+	--SkillList = { "truelch_SawbladeLauncher" },
+	SkillList = { "truelch_SawbladeLauncher", "truelch_debug_weapon" },
 	SoundLocation = "/mech/brute/pierce_mech/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
@@ -416,18 +416,19 @@ local function fooSkillReleased(pawn)
 
 		--Look for Grid Mechs
 		local mech = Board:GetPawn(pos)
-		if mech ~= nil and mech:GetType() == "truelch_GridMech" and Board:IsBuilding(pos) then
+		if mech ~= nil and mech:GetType() == "truelch_GridMech" and Board:IsBuilding(pos) and damageRedirected > 0 then
 			--Get the damage and apply to the mech
 			--Note that I needed to move temporarily the mech elsewhere to be able to deal damage to it
 
 			--TODO / WIP
 			local se = SkillEffect()
 
-			LOG("----------------------------- B")
+			--LOG("----------------------------- B")
 
-			local proteccAnim = SpaceDamage(pos, 0)
-            proteccAnim.sAnimation = "truelch_anim_grid_protecc"
-            se:AddDamage(proteccAnim)
+			--Too late to play this anim
+			--local proteccAnim = SpaceDamage(pos, 0)
+			--proteccAnim.sAnimation = "truelch_anim_grid_protecc"
+			--se:AddDamage(proteccAnim)
 
 			--Board:AddAlert(pos, "Grid Protection")
 			local testSpace = getProteccSpace()
@@ -435,7 +436,7 @@ local function fooSkillReleased(pawn)
 			mech:SetSpace(testSpace)
 			local redir = SpaceDamage(testSpace, damageRedirected)
 			se:AddSafeDamage(redir)
-			Board:AddEffect(se)			
+			Board:AddEffect(se)
 
 			--TODO: DAMAGE_DEATH?	
 			if mech:IsShield() and damageRedirected ~= DAMAGE_DEATH then
@@ -462,8 +463,26 @@ modapiext.events.onQueuedSkillEnd:subscribe(EVENT_onQueuedSkillEnded)
 
 --Test
 local EVENT_onQueuedSkillStarted = function(mission, pawn, weaponId, p1, p2)
-	--fooSkillReleased(pawn)
 	--Maybe start the anim here? idk
+	if pawn == nil or not functions:isMission() or functions:missionData().proteccData == nil or functions:missionData().proteccData[pawn:GetId()] == nil then
+		return
+	end
+
+	for _, data in ipairs(functions:missionData().proteccData[pawn:GetId()]) do
+		local x = data[1]
+		local y = data[2]
+		local pos = Point(x, y)
+		local damageRedirected = data[3]
+
+		--Maybe play a longer animation if the Mech is shielded?
+		if damageRedirected > 0 then
+			local se = SkillEffect()
+			local proteccAnim = SpaceDamage(pos, 0)
+			proteccAnim.sAnimation = "truelch_anim_grid_protecc"
+			se:AddDamage(proteccAnim)
+			Board:AddEffect(se)
+		end
+	end
 end
 modapiext.events.onQueuedSkillStart:subscribe(EVENT_onQueuedSkillStarted)
 

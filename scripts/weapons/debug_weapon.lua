@@ -47,7 +47,39 @@ local function debugLiveEnv(msg)
 
 end
 
+--function Mission:RemoveSpawnPoint(point)
+--function Mission:SpawnPawn(location, pawnType)
+--Mission:SpawnPawnInternal(location, pawn)
+
+--https://github.com/search?q=repo%3Aitb-community%2FITB-ModLoader%20QueuedSpawns&type=code
+--https://github.com/itb-community/ITB-ModLoader/blob/675bd7d48d10b0f9230210937560ee7e551b5d18/scripts/mod_loader/altered/spawn_point.lua#L50
+--https://github.com/itb-community/ITB-ModLoader/blob/675bd7d48d10b0f9230210937560ee7e551b5d18/scripts/mod_loader/altered/missions.lua#L18
 function truelch_debug_weapon:GetSkillEffect(p1, p2)
+	local ret = SkillEffect()
+
+	--SWAP SPAWNS
+	--LOG("-------------- SWAP SPAWNS:")
+	for _, spawn in ipairs(GetCurrentMission().QueuedSpawns) do
+		--LOG("-------------- spawn: "..save_table(spawn))
+		if spawn.location == p2 then
+			--LOG("--------------> spawn.location == p2")
+			--ret:AddScript("spawn.location = "..p3:GetString()) --attempt to index global 'spawn' (a nil value)
+		elseif spawn.location == p3 then
+			--LOG("--------------> spawn.location == p3")
+			--ret:AddScript("spawn.location = "..p2:GetString()) --attempt to index global 'spawn' (a nil value)
+		end
+	end
+
+	--ret:AddScript(string.format([[Mission:RemoveSpawnPoint(%s)]], p2:GetString()))
+	--ret:AddScript(string.format([[GetCurrentMission():RemoveSpawnPoint(%s)]], p2:GetString()))
+	ret:AddScript(string.format("GetCurrentMission():RemoveSpawnPoint(%s)", p2:GetString()))
+
+	return ret
+end
+
+
+
+function truelch_debug_weapon:GetSkillEffect_Env(p1, p2)
 	local ret = SkillEffect()
 
 	local proteccAnim = SpaceDamage(p2, 0)
@@ -67,7 +99,7 @@ function truelch_debug_weapon:GetSkillEffect(p1, p2)
 end
 
 
-function truelch_debug_weapon:GetSkillEffect_OLD(p1, p2)
+function truelch_debug_weapon:GetSkillEffect_Swap(p1, p2)
 	local ret = SkillEffect()
 
 	--[[
