@@ -45,6 +45,7 @@ local function isRiftExc(pawn)
 	end
 
 	for _, rEx in ipairs(riftPawnExceptions) do
+		LOGF("rEx: %s, pawn type: %s", rEx, pawn:GetType())
 		if pawn:GetType() == rEx then
 			LOG("rift pawn exception: "..pawn:GetType())
 			return true
@@ -165,6 +166,8 @@ truelch_RiftInducer_AB = truelch_RiftInducer:new{
 function truelch_RiftInducer:GetTargetArea(point)
 	local ret = PointList()
 
+	--LOGF("truelch_RiftInducer:GetTargetArea(point: %s)", point:GetString())
+
 	for dir = DIR_START, DIR_END do
 		for i = 2, 7 do
 			local curr = point + DIR_VECTORS[dir] * i
@@ -172,6 +175,7 @@ function truelch_RiftInducer:GetTargetArea(point)
 
 			if isLocOkForRift(curr) then
 				ret:push_back(curr)
+				--LOGF(" -> added: %s", curr:GetString())
 			end
 		end
 	end
@@ -180,7 +184,9 @@ function truelch_RiftInducer:GetTargetArea(point)
 end
 
 function truelch_RiftInducer:GetSecAreaPoints(p2)
-	points = {}
+	local points = {}
+
+	--LOGF("truelch_RiftInducer:GetSecAreaPoints(p2: %s) -> riftAreaVersion: %s", p2:GetString(), tostring(riftAreaVersion))
 
 	--riftAreaVersion --1: lines, 2: squares, 3: manhattan
 	--LOG("riftAreaVersion: "..tostring(riftAreaVersion))
@@ -206,16 +212,18 @@ function truelch_RiftInducer:GetSecAreaPoints(p2)
 				if isLocOkForRift(curr) then
 					--ret:push_back(curr)
 					points[#points + 1] = curr
+					--LOGF(" -> added: %s", curr:GetString())
 				end
 			end
 		end
 	elseif riftAreaVersion == 2 then
 		--Square
-		for j = -self.Range, self.Range do
-			for i = -self.Range, self.Range do
-				local curr = Point(i, j)
+		for j = -self.SecondTargetRange, self.SecondTargetRange do
+			for i = -self.SecondTargetRange, self.SecondTargetRange do
+				local curr = p2 + Point(i, j)
 				if i ~= 0 or j ~= 0 then
 					points[#points + 1] = curr
+					--LOGF(" -> added: %s", curr:GetString())
 				end
 			end
 		end
@@ -225,8 +233,10 @@ function truelch_RiftInducer:GetSecAreaPoints(p2)
 			for i = 0, 7 do
 				local curr = Point(i, j)
 				local dist = p2:Manhattan(curr)
-				if dist <= self.Range and dist > 0 then
+				--LOGF(" -> curr: %s, dist: %s", curr:GetString(), tostring(dist))
+				if dist <= self.SecondTargetRange and dist > 0 then
 					points[#points + 1] = curr
+					--LOGF(" ---> added: %s", curr:GetString())
 				end 
 			end
 		end
@@ -246,21 +256,11 @@ function truelch_RiftInducer:GetSkillEffect(p1, p2)
 		damage = SpaceDamage(p2, self.Damage, DIR_FLIP)
 	end
 
-	--From Science_TC_SwapOther
-	if not Board:IsPawnSpace(p2) then 
-		damage.sImageMark = "advanced/combat/icons/icon_x_glow.png"
-	--Yes, we gonna swap even tiles occupied by Stable pawns!
-	--[[
-	elseif Board:GetPawn(p2):IsGuarding() then
-		damage.sImageMark = "combat/icons/icon_guard_glow.png"
-	]]
-	else
-		damage.sImageMark = "advanced/combat/icons/icon_teleport_glow.png"
-	end
+	damage.sImageMark = "advanced/combat/icons/icon_teleport_glow.png"
 
 	--Preview impossible
 	for _, curr in pairs(self:GetSecAreaPoints(p2)) do
-		if not isLocOkForRift() then
+		if not isLocOkForRift(p2) then
 			local damage = SpaceDamage(curr, 0)
 			damage.sImageMark = "combat/icons/icon_swap_impossible.png"
 			ret:AddDamage(damage)
@@ -288,9 +288,14 @@ function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
 	end
 	]]
 
+	--LOG("truelch_RiftInducer:GetSecondTargetArea - START")
+
 	for _, curr in pairs(self:GetSecAreaPoints(p2)) do
+		--LOG("truelch_RiftInducer:GetSecondTargetArea -> curr: "..curr:GetString())
 		ret:push_back(curr)
 	end
+
+	--LOG("truelch_RiftInducer:GetSecondTargetArea - END")
 
 	return ret
 end

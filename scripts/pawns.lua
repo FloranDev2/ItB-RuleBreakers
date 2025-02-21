@@ -160,7 +160,7 @@ local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
 
 	--local amount = missionData().sawAmount[pawn:GetId()]
 	local amount = functions:getSawbladeAmount(pawn)
-	LOG("------------------ amount: "..tostring(amount))
+	--LOG("------------------ amount: "..tostring(amount))
 
 	if amount == nil or amount == 0 then
 		--LOG("------------------ amount == 0 (meaning that we don't actually have a sawblade)")
@@ -361,30 +361,20 @@ end
 modapiext.events.onFinalEffectBuild:subscribe(EVENT_onFinalEffectBuild)
 
 
------ JUST SOME DEBUG
-
 local function EVENT_onNextTurn(mission)
 	if Game:GetTeamTurn() == TEAM_PLAYER then
 		--Clear protecc data
 		functions:missionData().proteccData = {}
 
 		--Final mission second phase only: remove tentacle location for Grid Mech(s) on building(s)
-		--LOG("EVENT_onNextTurn -> GetCurrentMission().ID: "..GetCurrentMission().ID)
 		if GetCurrentMission().ID == "Mission_Final_Cave" and GetCurrentMission().LiveEnvironment.Locations ~= nil then
-			--LOG("---------------> HERE Mission_Final_Cave")
-			--GetCurrentMission().LiveEnvironment.Locations = {} --test
 			for index, point in ipairs(GetCurrentMission().LiveEnvironment.Locations) do
-				--LOG("-------------- point: "..point:GetString())
-				--table.remove(GetCurrentMission().LiveEnvironment.Locations, index) --test
-				--index = index - 1 --necessary?
 				for i = 0, 2 do
 					local mech = Board:GetPawn(i)
 					if mech ~= nil and mech:IsMech() and Board:IsBuilding(mech:GetSpace()) and
 						mech:GetSpace() == point then
-						--LOG("-------------- mech on a building is targeted by tentacle!")
-						--LOG("-------------- index: "..tostring(index))
 						table.remove(GetCurrentMission().LiveEnvironment.Locations, index)
-						index = index - 1 --necessary?
+						index = index - 1
 					end
 				end
 			end
@@ -420,17 +410,9 @@ local function fooSkillReleased(pawn)
 			--Get the damage and apply to the mech
 			--Note that I needed to move temporarily the mech elsewhere to be able to deal damage to it
 
-			--TODO / WIP
 			local se = SkillEffect()
 
-			--LOG("----------------------------- B")
-
-			--Too late to play this anim
-			--local proteccAnim = SpaceDamage(pos, 0)
-			--proteccAnim.sAnimation = "truelch_anim_grid_protecc"
-			--se:AddDamage(proteccAnim)
-
-			--Board:AddAlert(pos, "Grid Protection")
+			Board:AddAlert(pos, "Grid Protection")
 			local testSpace = getProteccSpace()
 			mech:SetInvisible(true)
 			mech:SetSpace(testSpace)
@@ -438,15 +420,17 @@ local function fooSkillReleased(pawn)
 			se:AddSafeDamage(redir)
 			Board:AddEffect(se)
 
-			--TODO: DAMAGE_DEATH?	
 			if mech:IsShield() and damageRedirected ~= DAMAGE_DEATH then
 				modApi:scheduleHook(550, function()
-					mech:SetSpace(pos) --hope this works
+					mech:SetSpace(pos)
 					mech:SetInvisible(false)
 				end)
-			else
-				functions:missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
+			--else
+				--functions:missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
 			end
+
+			--in any case
+			functions:missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
 		end
 
 		--Clear data: NOPE, clear once all effects have been resolved,

@@ -35,7 +35,7 @@ function mod:init()
 	modApi:addGenerationOption("option_smoothed_line",
 		"Smooth line",
 		"Damage dealt by the sawblade depends on the distance.",
-		{enabled = true}
+		{enabled = false}
 	)
 
 	modApi:addGenerationOption("option_diagonal_launch",
@@ -52,6 +52,16 @@ function mod:init()
 			values = {1, 2, 3},
 			value = 3,
 			strings = { "Lines", "Squares", "Manhattan" }
+		}
+	)
+
+	modApi:addGenerationOption("option_sawblade_rebuild",
+		"Rebuild Sawblade effect",
+		"What should happen when the sawblade.",
+		{	--1: nothing, 2: push, 3: vortex
+			values = {1, 2, 3},
+			value = 1,
+			strings = { "Nothing", "Push", "Vortex" }
 		}
 	)
 end

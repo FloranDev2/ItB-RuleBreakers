@@ -2,7 +2,7 @@ truelch_GridDischarge = Skill:new{
 	--Infos
 	Name = "Grid Discharge",
 	Description = "Deal damage equal to current grid power to an adjacent target.",
-	Class = "Science",
+	Class = "", --"Science", --now any class
 	Icon = "weapons/truelch_grid_discharge.png",
 
 	--Shop

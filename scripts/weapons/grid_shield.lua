@@ -1,7 +1,8 @@
 truelch_GridShield = Skill:new{
 	--Infos
 	Name = "Grid Shield",
-	Description = "Teleport to a city within move range.\nShield the unit and the building.",
+	--Description = "Teleport to a city within move range.\nShield the unit and the building.",
+	Description = "Shield the unit and the building.",
 	Class = "Science",
 	Icon = "weapons/truelch_grid_shield.png",
 
@@ -17,10 +18,21 @@ truelch_GridShield = Skill:new{
 	PushAdjacent = false,
 
 	--Tip image
+	--[[
 	TipImage = {
 		Unit       = Point(2, 3),
 		Building   = Point(2, 2),
 		Building2  = Point(2, 3),
+		Enemy1     = Point(2, 1),
+		Queued1    = Point(2, 2),
+		Target     = Point(2, 2),
+		CustomPawn = "truelch_GridMech"
+	}
+	]]
+
+	TipImage = {
+		Unit       = Point(2, 2),
+		Building   = Point(2, 2),
 		Enemy1     = Point(2, 1),
 		Queued1    = Point(2, 2),
 		Target     = Point(2, 2),
@@ -50,13 +62,16 @@ truelch_GridShield_AB = truelch_GridShield:new{
 
 function truelch_GridShield:GetTargetArea(point)
 	local ret = PointList()
+	ret:push_back(point)	
+	return ret
+end
+
+--[[
+function truelch_GridShield:GetTargetArea(point)
+	local ret = PointList()
 
 	local moveSpeed = Pawn:GetMoveSpeed() --webbed = move 0
-	--LOG("moveSpeed: "..tostring(moveSpeed))
 
-	--can target self?
-
-	--yes, I'm lazy
 	for j = 0, 7 do
 		for i = 0, 7 do
 			local curr = Point(i, j)
@@ -68,6 +83,7 @@ function truelch_GridShield:GetTargetArea(point)
 	
 	return ret
 end
+]]
 
 function truelch_GridShield:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()

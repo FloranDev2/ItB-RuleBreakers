@@ -1,3 +1,7 @@
+---------------
+--- IMPORTS ---
+---------------
+
 local mod = modApi:getCurrentMod()
 
 local resourcePath = mod.resourcePath
@@ -6,6 +10,11 @@ local scriptPath = mod.scriptPath
 local mechPath = resourcePath .."img/mechs/"
 
 local functions = require(scriptPath.."functions")
+
+
+-------------
+--- TRAIT ---
+-------------
 
 --to do for both sawblade and upgraded saw blade:
 local trait = require(scriptPath.."/libs/trait") --unnecessary?
@@ -27,12 +36,17 @@ trait:add{
     desc_text = "Units attacking the sawblade in melee range will take 2 damage."
 }
 
+
+------------
+--- PAWN ---
+------------
+
 truelch_Sawblade = Pawn:new{
 	Name = "Sawblade",
 	Health = 1,
 	MoveSpeed = 0,
 	Image = "truelch_sawblade",
-	SkillList = { },
+	SkillList = { "truelch_SawbladeSelfDestruct", "truelch_SawbladeDisarm" },
 	SoundLocation = "", --"/mech/flying/jet_mech/"
 	ImageOffset = 9,
 	DefaultTeam = TEAM_PLAYER,
@@ -48,6 +62,86 @@ truelch_Sawblade_A = truelch_Sawblade:new{
 	Image = "truelch_sawblade_A",
 }
 AddPawn("truelch_Sawblade_A")
+
+
+-----------------------------
+--- SKILL (SELF-DESTRUCT) ---
+-----------------------------
+
+truelch_SawbladeSelfDestruct = Skill:new{
+	--Infos
+	Name = "Sawblade self-destruct",
+	Description = "Sawblade shatters itself to project deadly shards of metal, damaging and pushing adjacent tiles.",
+	--Class = "",
+	Icon = "weapons/support_destruct.png",
+
+	--Gameplay
+	Damage = 1,
+	Push = true,
+
+	--Tip image
+	TipImage = StandardTips.Surrounded
+}
+
+function truelch_SawbladeSelfDestruct:GetTargetArea(point)
+	local ret = PointList()
+	ret:push_back(point)	
+	return ret
+end
+
+function truelch_SawbladeSelfDestruct:GetSkillEffect(p1, p2)
+	local ret = SkillEffect()
+
+	--Self-damage
+	local selfDmg = SpaceDamage(p2, DAMAGE_DEATH)
+	selfDmg.sAnimation = "explo_fire1" --tmp?
+	selfDmg.sSound = "/impact/generic/explosion" --tmp?
+	ret:AddDamage(selfDmg)
+	ret:AddBounce(p1, 3)
+
+	--Adjacent damage
+	for dir = DIR_START, DIR_END do
+		local curr = p2 + DIR_VECTORS[dir]
+		local adjDmg = SpaceDamage(curr, self.Damage)
+		if self.Push then
+			adjDmg.iPush = dir
+		end
+		ret:AddDamage(adjDmg)
+		ret:AddBounce(curr, 2)
+	end
+
+	return ret
+end
+
+truelch_SawbladeDisarm = Skill:new{
+	--Infos
+	Name = "Disarm",
+	Description = "The sawblade self-destruct harmlessly.",
+	--Class = "",
+	Icon = "weapons/support_destruct.png",
+
+	--Tip image
+	TipImage = StandardTips.Surrounded
+}
+
+function truelch_SawbladeDisarm:GetTargetArea(point)
+	local ret = PointList()
+	ret:push_back(point)	
+	return ret
+end
+
+function truelch_SawbladeDisarm:GetSkillEffect(p1, p2)
+	local ret = SkillEffect()
+
+	--Self-damage
+	local selfDmg = SpaceDamage(p2, DAMAGE_DEATH)
+	selfDmg.sAnimation = "explo_fire1" --tmp?
+	selfDmg.sSound = "/impact/generic/explosion" --tmp?
+	ret:AddDamage(selfDmg)
+	ret:AddBounce(p1, 3)
+
+	return ret
+end
 
 
 ---------------

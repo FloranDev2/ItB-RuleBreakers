@@ -25,6 +25,14 @@ modApi.events.onModLoaded:subscribe(function(id)
 	diagonalLaunch = options["option_diagonal_launch"].enabled
 end)
 
+local sawbladeRebuildVersion --1: lines, 2: squares, 3: manhattan
+modApi.events.onModLoaded:subscribe(function(id)
+	if id ~= mod.id then return end
+	local options = mod_loader.currentModContent[id].options
+	sawbladeRebuildVersion = options["option_sawblade_rebuild"].value
+	--LOG("sawbladeRebuildVersion: "..tostring(sawbladeRebuildVersion))
+end)
+
 
 --------------
 --- WEAPON ---
@@ -45,12 +53,10 @@ truelch_SawbladeLauncher = Skill:new{
 	UpgradeCost = { 1, 2 },
 
 	--Gameplay
-	--Damage = 2, --old
-	LaunchDmgData = { { 0.6, 2 } }, --[1] dist / [2] dmg
+	LaunchDmgData = { { 0.5, 2 } }, --[1] dist / [2] dmg
 	LaunchDmgDataSmoothed = { { 0.4, 2 }, { 0.75, 1 } }, --[1] dist / [2] dmg
 
-	--ReturnDamage = 3, --old
-	ReturnDmgData = { { 0.6, 3 } },
+	ReturnDmgData = { { 0.5, 3 } },
 	ReturnDmgDataSmoothed = { { 0.1, 3 }, { 0.5, 2 }, { 0.75, 1 } },
 
 	EscalatingDamage = 0,
@@ -181,124 +187,105 @@ end
 
 --TODO: make it usable for both launch and return
 --Also give a list of dist / damage
-function truelch_SawbladeLauncher:ComputeLine(ret, p1, p2, dmgData, currEscDmg)
-	if p1.x == p2.x or p1.y == p2.y then
-		--Aligned
-		local dir = GetDirection(p1 - p2)
-		for i = 1, p1:Manhattan(p2) - 1 do
-			local curr = p2 + DIR_VECTORS[dir] * i
-			local damage = SpaceDamage(curr, 3)
-			ret:AddDamage(damage)
-		end
-	else
-		local iMin = math.min(p1.x, p2.x)
-		local iMax = math.max(p1.x, p2.x)
+function truelch_SawbladeLauncher:ComputeLine(ret, startPoint, endPoint, dmgData, currEscDmg)
 
-		local jMin = math.min(p1.y, p2.y)
-		local jMax = math.max(p1.y, p2.y)
+	local proj = SpaceDamage(endPoint, 0)
+	proj.bHide = true --suggested by nopro
+	ret:AddArtillery(startPoint, proj, self.ShotUpArt, NO_DELAY)
 
-		local iterations = 0
+	local iMin = math.min(startPoint.x, endPoint.x)
+	local iMax = math.max(startPoint.x, endPoint.x)
 
-		local sortedDamageList = {} --[1] distFromStart [2] point [3] damage
+	local jMin = math.min(startPoint.y, endPoint.y)
+	local jMax = math.max(startPoint.y, endPoint.y)
 
-		LOG("First loop")
-		for j = jMin, jMax do
-			for i = iMin, iMax do
-				iterations = iterations + 1
-				if iterations > 100 then
-					LOG("if iterations > 100 then -> RETURN")
-					return
+	local iterations = 0
+
+	local sortedDamageList = {} --[1] distFromStart [2] point [3] damage
+
+	--LOG("First loop")
+	for j = jMin, jMax do
+		for i = iMin, iMax do
+			local curr = Point(i, j)
+			if curr ~= startPoint and curr ~= endPoint then
+				local distFromLine = distancePointLine(curr.x, curr.y, startPoint.x, startPoint.y, endPoint.x, endPoint.y)
+				local distFromStart = math.sqrt((curr.x - startPoint.x)^2 + (curr.y - startPoint.y)^2) --for sorting
+				local dmg = 0
+
+				--Compute the damage (depending on the distance)
+				for _, data in pairs(dmgData) do
+					local distMax = data[1]
+					local dmgVal  = data[2]
+
+					if distFromLine <= distMax then
+						dmg = dmgVal
+						break
+					end
 				end
-				local curr = Point(i, j)
-				if curr ~= p1 and curr ~= p2 then					
-					local distFromLine = distancePointLine(curr.x, curr.y, p1.x, p1.y, p2.x, p2.y)
-					local distFromStart = math.sqrt((curr.x - p1.x)^2 + (curr.y - p1.y)^2) --for sorting
-					local dmg = 0
 
-					--Compute the damage (depending on the distance)
-					for _, data in pairs(dmgData) do
-						local distMax = data[1]
-						local dmgVal  = data[2]
+				if dmg > 0 then
+					sortData = { distFromStart, curr, dmg }
+					--sortData = { distFromStart, curr, 0 } --tmp to test order
 
-						if distFromLine <= distMax then
-							dmg = dmgVal
+					--Look through all existing damage and check distance
+					local hasBeenInserted = false
+
+					local it2 = 0
+					for index, sDmg in pairs(sortedDamageList) do
+						--[1] distFromStart [2] point [3] damage
+						if distFromStart < sDmg[1] then
+							--LOG("if distFromStart < sDmg[1]")
+							hasBeenInserted = true
+							table.insert(sortedDamageList, index, sortData)								
 							break
 						end
 					end
 
-					if dmg > 0 then
-						sortData = { distFromStart, curr, dmg }
+					if not hasBeenInserted then
+						--LOG("if not hasBeenInserted then")
+						sortedDamageList[#sortedDamageList + 1] = sortData
+					end
 
-						--Look through all existing damage and check distance
-						local hasBeenInserted = false
-
-						local it2 = 0
-						for index, sDmg in pairs(sortedDamageList) do
-							it2 = it2 + 1
-							if it2 > 1000 then
-								LOG("if it2 > 1000 then -> RETURN")
-								return
-							end
-							--[1] distFromStart [2] point [3] damage
-							if distFromStart < sDmg[1] then
-								LOG("if distFromStart < sDmg[1]")
-								hasBeenInserted = true
-								table.insert(sortedDamageList, index, sortData)								
-								break
-							end
-						end
-
-						if not hasBeenInserted then
-							LOG("if not hasBeenInserted then")
-							sortedDamageList[#sortedDamageList + 1] = sortData
-						end
-
-					end					
-				end
+				end					
 			end
 		end
+	end
 
-		LOG("Second loop: Escalating damage")
-		--Second loop: Escalating damage
-		--Need to compute damage closer from start (p1)
-		--Because of escalating damage calculation
-		for _, sDmg in pairs(sortedDamageList) do
-			--[1] distFromStart [2] point [3] damage
-			local distFromStart = sDmg[1]
-			local pos    = sDmg[2]
-			local dmgVal = sDmg[3]
-			local spaceDamage = SpaceDamage(pos, dmgVal)
-			if Board:IsDeadly(spaceDamage, Pawn) then
-				currEscDmg = currEscDmg + self.EscalatingDamage
-			end
+	--LOG("Second loop: Escalating damage")
+	--Second loop: Escalating damage
+	--Need to compute damage closer from start (p1)
+	--Because of escalating damage calculation
+	for _, sDmg in pairs(sortedDamageList) do
+		--[1] distFromStart [2] point [3] damage
+		local distFromStart = sDmg[1]
+		local pos    = sDmg[2]
+		local dmgVal = sDmg[3]
+		local spaceDamage = SpaceDamage(pos, dmgVal)
+
+		--currEscDmg = currEscDmg + 1 --just to test the order
+		if Board:IsDeadly(spaceDamage, Pawn) then
+			currEscDmg = currEscDmg + self.EscalatingDamage
 		end
 
-		LOG("Third loop: apply damage")
-		--Third loop: apply damage
-		for _, sDmg in pairs(sortedDamageList) do
-			--local distFromStart = sDmg[1] --unused
-			local pos    = sDmg[2]
-			local dmgVal = sDmg[3]
-			local spaceDamage = SpaceDamage(pos, dmgVal)
-			ret:AddDamage(spaceDamage)
-		end
+		sDmg[3] = sDmg[3] + currEscDmg
+	end
+
+	--LOG("Third loop: apply damage")
+	--Third loop: apply damage
+	for _, sDmg in pairs(sortedDamageList) do
+		--local distFromStart = sDmg[1] --unused
+		local pos    = sDmg[2]
+		local dmgVal = sDmg[3]
+		local spaceDamage = SpaceDamage(pos, dmgVal)
+		ret:AddDamage(spaceDamage)
 	end
 
 	return currEscDmg
 end
 
 function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
-	LOGF("truelch_SawbladeLauncher:LaunchSawblade(p1: %s, p2: %s)", p1:GetString(), p2:GetString())
-
 	local ret = SkillEffect()
-
-	local dist = p1:Manhattan(p2)
 	local currEscDmg = 0
-
-	--local projArt = SpaceDamage(p2, 0)
-	--ret:AddProjectile(projArt, self.ProjectileArt, NO_DELAY)
-	local proj = SpaceDamage(p1, 0)
-	ret:AddArtillery(p2, proj, self.ShotUpArt, NO_DELAY)
 
 	if diagonalLaunch then
 		if smoothedLine then
@@ -334,21 +321,20 @@ end
 function truelch_SawbladeLauncher:ReturnSawblade(p1, p2)
 	local ret = SkillEffect()
 
-	if not functions:isSawbladePos(p2) and not functions:isReinforcedSawbladePos(p2) then
+	if not functions:isSawbladePos(p2) and not functions:isReinforcedSawbladePos(p2) and not Board:IsTipImage() then
 		LOG("----------- WTF")
 		return ret
 	end
 
-	--Projectile art (artillery) + self-damage
-	local returnProj = SpaceDamage(p1, self.ReturnSelfDamage)
-	ret:AddArtillery(p2, returnProj, self.ShotUpArt, NO_DELAY)
+	--Self damage
+	local selfDmg = SpaceDamage(p1, self.ReturnSelfDamage)
 
 	local currEscDmg = 0
 
 	if smoothedLine then
-		currEscDmg = self:ComputeLine(ret, p1, p2, self.ReturnDmgDataSmoothed, currEscDmg)
+		currEscDmg = self:ComputeLine(ret, p2, p1, self.ReturnDmgDataSmoothed, currEscDmg)
 	else
-		currEscDmg = self:ComputeLine(ret, p1, p2, self.ReturnDmgData, currEscDmg)
+		currEscDmg = self:ComputeLine(ret, p2, p1, self.ReturnDmgData, currEscDmg)
 	end
 
 	--Destroy sawblade
@@ -358,27 +344,42 @@ function truelch_SawbladeLauncher:ReturnSawblade(p1, p2)
 
 	--Add sawblade
 	if not Board:IsTipImage() then
-		ret:AddScript("functions:addSawBlade(Pawn, 1)")
+		--ret:AddScript("functions:addSawBlade(Pawn, 1)")
+		ret:AddScript("truelch_addSawblade(Pawn, 1)") --forgot that I made this function for this exact reason
 	end
 
 	return ret
 end
 
 function truelch_SawbladeLauncher:RebuildSawblade(p1, p2)
+	--LOG("truelch_SawbladeLauncher:RebuildSawblade()")
 	local ret = SkillEffect()
 
-	ret:AddScript("functions:addSawBlade(Pawn, 1)")
+	--ret:AddScript("functions:addSawBlade(Pawn, 1)")
+	ret:AddScript("truelch_addSawblade(Pawn, 1)") --forgot that I made this function for this exact reason
 
 	--Push adjacent (Option?)
-	--[[
-	for dir = DIR_START, DIR_END do
-		local curr = p2 + DIR_VECTORS[dir]
-		local damage = SpaceDamage(curr, 0)
-		damage.sAnimation = "airpush_"..dir
-		damage.iPush = dir
-		ret:AddDamage(damage)
-	end
-	]]
+	--1: nothing, 2: push, 3: vortex
+	if sawbladeRebuildVersion == 2 then
+		--Push outward
+		for dir = DIR_START, DIR_END do
+			local curr = p2 + DIR_VECTORS[dir]
+			local damage = SpaceDamage(curr, 0)
+			damage.sAnimation = "airpush_"..dir
+			damage.iPush = dir
+			ret:AddDamage(damage)
+		end
+	elseif sawbladeRebuildVersion == 3 then
+		--"Vortex"
+		for dir = DIR_START, DIR_END do
+			dir2 = (dir + 1) % 4
+			local curr = p2 + DIR_VECTORS[dir]
+			local damage = SpaceDamage(curr, 0)
+			damage.sAnimation = "airpush_"..dir2
+			damage.iPush = dir2
+			ret:AddDamage(damage)
+		end
+	end	
 
 	return ret
 end
@@ -410,6 +411,8 @@ end
 
 function truelch_SawbladeLauncher:GetSkillEffect_TipImage(p1, p2)
 	local ret = SkillEffect()
+
+	LOG("truelch_SawbladeLauncher:GetSkillEffect_TipImage -> self.TipIndex: "..tostring(self.TipIndex))
 
 	if self.TipIndex == 0 then
 		--Launch sawblade
