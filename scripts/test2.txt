@@ -1,3 +1,30 @@
+## Version 0.0.6
+
+**Grid Mech building protection:**
+- Various fixes (vs normal and vs queued attacks, with shield and without shield)
+- Animation to hide the temporary re-location of the Grid Mech is still off (but at least, the white silhouette is *almost* placed correctly lol)
+
+**Sawblade Launcher:**
+- Reworked to support diagonal launch.
+- No longer show artillery arc since the arc is a bit off.
+- Options for rebuilding sawblade's effect: No effect, Push adjacent, Vortex. (also fixed the bug that prevented to actually reload the sawblade)
+- __Note:__ I had a weird bug where option value was reset to a previous value for no reason. If you happen to have this bug, ping me and I'll show you what to change in the files.
+- Added self-destruct and disarm skills to the sawblade.
+- Added Flying to the Sawblade
+- Added a Sawblade when it would kill the building at p2 (bruh...)
+- Can walk on upgraded sawblade to pick it up instead of just the regular sawblade
+
+**Grid Shield:**
+- No longer teleport (also disable teleport animation)
+- Also shield the mech itself
+
+**Rift Inducer:**
+- Options for second target area should work now (line, square and diamond)
+- Swap emerge points!
+- Smoke and shield swap not supported yet I think. I need to not forget about it!
+- New palette (basically paradox white but with dark red for the light)
+
+
 ["BonusObjs"] = { 
 	[1] = 4 
 }, 

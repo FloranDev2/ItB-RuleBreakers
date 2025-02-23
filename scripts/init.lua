@@ -37,13 +37,12 @@ function mod:init()
 		"Damage dealt by the sawblade depends on the distance.",
 		{enabled = false}
 	)
-
+	
 	modApi:addGenerationOption("option_diagonal_launch",
 		"Diagonal launch",
 		"Launching sawblade can also be diagonal.",
-		{enabled = false}
+		{enabled = true}
 	)
-
 
 	modApi:addGenerationOption("option_rift_area",
 		"Rift Inducer's second area",

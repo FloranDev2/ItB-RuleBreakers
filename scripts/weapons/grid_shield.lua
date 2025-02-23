@@ -95,7 +95,7 @@ function truelch_GridShield:GetSkillEffect(p1, p2)
 		ret:AddDamage(autoShield)
 	end
 
-	ret:AddTeleport(p1, p2, FULL_DELAY)
+	--ret:AddTeleport(p1, p2, FULL_DELAY) --no teleport anymore
 
 	local shield = SpaceDamage(p2, 0)
 	shield.iShield = 1

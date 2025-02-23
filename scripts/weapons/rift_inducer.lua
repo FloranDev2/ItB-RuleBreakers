@@ -31,7 +31,7 @@ modApi.events.onModLoaded:subscribe(function(id)
 	if id ~= mod.id then return end
 	local options = mod_loader.currentModContent[id].options
 	riftAreaVersion = options["option_rift_area"].value
-	--LOG("riftAreaVersion: "..tostring(riftAreaVersion))
+	LOG("riftAreaVersion: "..tostring(riftAreaVersion))
 end)
 
 local riftPawnExceptions = {

@@ -127,8 +127,8 @@ function this:isSawbladePos(pos)
 	return pawn ~= nil and pawn:GetType() == "truelch_Sawblade"
 end
 
-function this:isReinforcedSawbladePos(point)
-	local pawn = Board:GetPawn(point)
+function this:isReinforcedSawbladePos(pos)
+	local pawn = Board:GetPawn(pos)
 	return pawn ~= nil and pawn:GetType() == "truelch_Sawblade_A"
 end
 
@@ -199,12 +199,12 @@ function truelch_addSawblade(pawn, incr)
 end
 
 function this:addSawblade(pawn, incr)
-	LOG("addSawblade()")
+	--LOG("addSawblade()")
 	if pawn == nil then
 		LOG(" -> pawn is nil!")
 		return
 	end
-	LOG(" -> addSawblade(pawn: "..pawn:GetMechName()..", incr: "..tostring(incr)..")")
+	--LOG(" -> addSawblade(pawn: "..pawn:GetMechName()..", incr: "..tostring(incr)..")")
 
 	--local oldValue = this:missionData().sawAmount[pawn:GetId()]
 	local oldValue = this:getSawbladeAmount(pawn)

@@ -58,8 +58,8 @@ modApi:appendAsset("img/effects/truelch_anim_grid_protecc.png", resourcePath.."i
 
 ANIMS.truelch_anim_grid_protecc = Animation:new{
 	Image = "effects/truelch_anim_grid_protecc.png",
-	PosX = -17,
-	PosY = -12,
+	PosX = -18,
+	PosY = -20,
 	Time = 0.08,
 	NumFrames = 10,
 }

@@ -11,26 +11,16 @@ local functions = require(path.."functions")
 --- OPTIONS ---
 ---------------
 
-local smoothedLine = true
-modApi.events.onModLoaded:subscribe(function(id)
-	if id ~= mod.id then return end
-	local options = mod_loader.currentModContent[id].options
-	smoothedLine = options["option_smoothed_line"].enabled
-end)
-
 local diagonalLaunch = false
-modApi.events.onModLoaded:subscribe(function(id)
-	if id ~= mod.id then return end
-	local options = mod_loader.currentModContent[id].options
-	diagonalLaunch = options["option_diagonal_launch"].enabled
-end)
-
+local smoothedLine = true
 local sawbladeRebuildVersion --1: lines, 2: squares, 3: manhattan
 modApi.events.onModLoaded:subscribe(function(id)
 	if id ~= mod.id then return end
 	local options = mod_loader.currentModContent[id].options
+	diagonalLaunch = options["option_diagonal_launch"].enabled
+	smoothedLine = options["option_smoothed_line"].enabled
 	sawbladeRebuildVersion = options["option_sawblade_rebuild"].value
-	--LOG("sawbladeRebuildVersion: "..tostring(sawbladeRebuildVersion))
+	LOG("sawbladeRebuildVersion: "..tostring(sawbladeRebuildVersion))
 end)
 
 
@@ -287,15 +277,16 @@ function truelch_SawbladeLauncher:LaunchSawblade(p1, p2)
 	local ret = SkillEffect()
 	local currEscDmg = 0
 
-	if diagonalLaunch then
-		if smoothedLine then
-			currEscDmg = self:ComputeLine(ret, p1, p2, self.LaunchDmgDataSmoothed, currEscDmg)
-		else
-			currEscDmg = self:ComputeLine(ret, p1, p2, self.LaunchDmgData, currEscDmg)
-		end
+	--if diagonalLaunch then
+	if smoothedLine then
+		currEscDmg = self:ComputeLine(ret, p1, p2, self.LaunchDmgDataSmoothed, currEscDmg)
+	else
+		currEscDmg = self:ComputeLine(ret, p1, p2, self.LaunchDmgData, currEscDmg)
 	end
+	--end
 
 	--P2 compute
+	local regular = true
 	local endDamage = SpaceDamage(p2, 2 + currEscDmg)
 	if Board:IsDeadly(endDamage, Pawn) then
 		endDamage.sPawn = self.SawbladePawn
@@ -328,6 +319,7 @@ function truelch_SawbladeLauncher:ReturnSawblade(p1, p2)
 
 	--Self damage
 	local selfDmg = SpaceDamage(p1, self.ReturnSelfDamage)
+	ret:AddDamage(selfDmg)
 
 	local currEscDmg = 0
 
@@ -360,6 +352,7 @@ function truelch_SawbladeLauncher:RebuildSawblade(p1, p2)
 
 	--Push adjacent (Option?)
 	--1: nothing, 2: push, 3: vortex
+	LOG("sawbladeRebuildVersion: "..tostring(sawbladeRebuildVersion))
 	if sawbladeRebuildVersion == 2 then
 		--Push outward
 		for dir = DIR_START, DIR_END do

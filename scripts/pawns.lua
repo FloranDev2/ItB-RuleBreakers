@@ -36,7 +36,7 @@ truelch_SawbladeMech = Pawn:new{
 	Image = "mech_sawblade", --"MechPierce"
 	ImageOffset = palette,
 	SkillList = { "truelch_SawbladeLauncher" },
-	--SkillList = { "truelch_SawbladeLauncher", "truelch_debug_weapon" },
+	--SkillList = { "truelch_SawbladeLauncher", "Ranged_Artillerymech" },
 	SoundLocation = "/mech/brute/pierce_mech/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
@@ -91,7 +91,7 @@ function Move:GetTargetArea(p, ...)
 		for j = 0, 7 do
 			for i = 0, 7 do
 				local curr = Point(i, j)
-				if functions:isSawbladePos(curr) and isReachable(mover, curr) then
+				if (functions:isSawbladePos(curr) or functions:isReinforcedSawbladePos(curr)) and isReachable(mover, curr) then
 					ret:push_back(curr)
 				end
 			end
@@ -112,23 +112,27 @@ function truelch_testMover()
 	table.insert(functions:missionData().retrMoveData, { truelch_testMover_mover:GetId(), truelch_testMover_sawblade:GetId() } )
 end
 
+--[[
 function truelch_testMover2()
-	functions:missionData().sawStatus[truelch_testMover_mover:GetId()] = 0
+	--functions:missionData().sawStatus[truelch_testMover_mover:GetId()] = 0
+	--functions:missionData().
 end
+]]
 
 local oldMove = Move.GetSkillEffect
 function Move:GetSkillEffect(p1, p2, ...)
 	local mover = Board:GetPawn(p1)
 	local ret = SkillEffect()
 
-	if mover and functions:isEquippedWithSawbladeLauncher(mover) and functions:isSawbladePos(p2) then
+	if mover and functions:isEquippedWithSawbladeLauncher(mover) and (functions:isSawbladePos(p2) or functions:isReinforcedSawbladePos(p2)) then
 		truelch_testMover_mover = mover
 		truelch_testMover_sawblade = Board:GetPawn(p2)
 		ret:AddScript("truelch_testMover()")
 		ret:AddScript(string.format("Board:GetPawn(%s):SetSpace(Point(-1, -1))", p2:GetString()))
 		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
 		ret:AddScript(string.format([[Board:AddAlert(%s, "SAWBLADE RETRIEVED")]], p2:GetString()))
-		ret:AddScript("truelch_testMover2()")
+		--ret:AddScript("truelch_testMover2()")
+		ret:AddScript(string.format("truelch_addSawblade(Board:GetPawn(%s), 1)", p2:GetString()))
 		return ret
 	else
 		ret:AddMove(Board:GetPath(p1, p2, mover:GetPathProf()), FULL_DELAY)
@@ -142,7 +146,6 @@ end
 local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
 	if not pawn:IsMech()
 			or not functions:isEquippedWithSawbladeLauncher(pawn)
-			--or functions:missionData().sawAmount[pawn:GetId()] == nil then
 			or functions:getSawbladeAmount(pawn) == nil then
 		LOG("EVENT_onPawnUndoMove -> check return")
 		return
@@ -158,7 +161,6 @@ local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
 	- >= 1: not used anymore
 	]]
 
-	--local amount = missionData().sawAmount[pawn:GetId()]
 	local amount = functions:getSawbladeAmount(pawn)
 	--LOG("------------------ amount: "..tostring(amount))
 
@@ -197,7 +199,8 @@ local function EVENT_onPawnUndoMove(mission, pawn, undonePosition)
 			mech ~= nil and
 			sawb ~= nil then
 		sawb:SetSpace(undonePosition)
-		functions:missionData().sawStatus[pawn:GetId()] = 1
+		--functions:missionData().sawStatus[pawn:GetId()] = 1
+		functions:addSawblade(pawn, -1)
 
 		--Remove
 		table.remove(functions:missionData().retrMoveData, count) --table.getn(missionData().retrMoveData) --would this work?		
@@ -267,12 +270,7 @@ function getProteccSpace()
 			--Return the first fitting one, don't need to pick a random fitting positions among all possible
 			local curr = Point(i, j)
 			if not Board:IsBlocked(curr, PATH_PROJECTILE) and
-					--[[
-					not Board:IsPod(curr) and
-					Board:GetItem(curr) == nil and
-					]]
 					Board:IsTerrain(curr, TERRAIN_ROAD) then
-				--LOG("--------- getProteccSpace() -> curr: "..curr:GetString())
 				return curr
 			end
 		end
@@ -281,44 +279,73 @@ function getProteccSpace()
 	return Point(-1, -1) --eh
 end
 
-local function fooProtecc(pawn, se, effects, isQueued)
+local foo_damageRedirected = -1
+local foo_origin = Point(-1, -1)
+local foo_pawnId = -1
+function fooProteccQueued()
+	LOG("fooProteccQueued()")
 
-	if not functions:isMission() then
+	if foo_damageRedirected == -1 or foo_origin == Point(-1, -1) or foo_pawnId == -1 or functions == nil or not functions:isMission() then
+		LOG("fooProteccQueued() --- ERROR ---> RETURN")
 		return
 	end
 
+	table.insert(functions:missionData().proteccData[foo_pawnId], { foo_origin.x, foo_origin.y, foo_damageRedirected })
+
+	local count = 0
+	for _, data in ipairs(functions:missionData().proteccData[foo_pawnId]) do
+		count = count + 1
+	end
+	LOG("count: "..tostring(count))
+end
+
+local function fooProtecc(pawn, se, effects, isQueued)
+	--LOGF("fooProtecc(pawn: %s, isQueued: %s)", pawn:GetMechName(), tostring(isQueued))
+	if not functions:isMission() then
+		return
+	end
 	if isQueued then
+		--LOG("fooProtecc - isQueued")
 		functions:missionData().proteccData[pawn:GetId()] = {}
 	end
 
     for i = 1, effects:size() do
+    	--LOG("fooProtecc -> loop i: "..tostring(i))
         local damageRedirected = 0
         local spaceDamage = effects:index(i)        
         if spaceDamage.iDamage > 0 and Board:IsBuilding(spaceDamage.loc) then
+        	--LOG("spaceDamage.iDamage: "..tostring(spaceDamage.iDamage))
         	local origin = spaceDamage.loc
+        	--[[
+        	if not isQueued then
+        		LOG("Truelch -------------- spaceDamage.loc: "..spaceDamage.loc:GetString())
+        	end
+        	]]
             local proteccPawn = Board:GetPawn(origin)
             if proteccPawn ~= nil and proteccPawn:GetType() == "truelch_GridMech" then
+            	--LOG("if proteccPawn ~= nil and proteccPawn:GetType() == truelch_GridMech")
                 damageRedirected = damageRedirected + spaceDamage.iDamage
                 spaceDamage.iDamage = 0
                 spaceDamage.sImageMark = "combat/icons/icon_guard_glow.png" --moved the icon to the protected building
                 local id = proteccPawn:GetId()
                 if damageRedirected > 0 then
+                	--LOG("if damageRedirected > 0 then")
                 	if not isQueued then
 	                    local proteccAnim = SpaceDamage(origin, 0)
 	                    proteccAnim.sAnimation = "truelch_anim_grid_protecc"
 	                    se:AddDamage(proteccAnim)
-
 	                    se:AddScript(string.format([[Board:AddAlert(%s, "GRID PROTECTION")]], spaceDamage.loc:GetString()))
-
-	                    LOG("----------------------------- A")
-	                    
-	                    local redir = SpaceDamage(testSpace, damageRedirected)
 	                    local testSpace = getProteccSpace()
-	                    redir.bHide = true                   
+	                    local redir = SpaceDamage(testSpace, damageRedirected)
+	                    redir.bHide = true
 	                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), testSpace:GetString()))
 	                	se:AddSafeDamage(redir)
 	                    se:AddScript(string.format("Board:GetPawn(%s):SetSpace(%s)", tostring(id), origin:GetString()))
+	                    LOGF("Truelch -------------- IS NOT QUEUED -> origin: %s, spaceDamage.loc: %s", origin:GetString(), spaceDamage.loc:GetString())
+	                    --Sometimes, origin will have a very random value, like: Point( 1869373284, 1919247457 ) and after that, it's a correct value.
+	                    --This problem vanished after I put LOGs wtf
                 	else
+                		LOG("-------------- IS QUEUED")
                 		--[[
 						functions:missionData().proteccData = {
 							[107] = { --Firefly's id
@@ -335,7 +362,13 @@ local function fooProtecc(pawn, se, effects, isQueued)
                 		LOGF("----- fooProtecc() -> putting data: pawn's id: %s, pos: %s, damage: %s",
                 			tostring(pawn:GetId()), origin:GetString(), tostring(damageRedirected))
             			]]
-						table.insert(functions:missionData().proteccData[pawn:GetId()], { origin.x, origin.y, damageRedirected })
+						--table.insert(functions:missionData().proteccData[pawn:GetId()], { origin.x, origin.y, damageRedirected })
+						--se:AddScript([[table.insert(functions:missionData().proteccData[pawn:GetId()], { origin.x, origin.y, damageRedirected })]])
+						foo_origin = origin
+						foo_damageRedirected = damageRedirected
+						foo_pawnId = pawn:GetId()
+						--se:AddScript("fooProteccQueued()")
+						fooProteccQueued()
                 	end
 
                 end
@@ -345,12 +378,14 @@ local function fooProtecc(pawn, se, effects, isQueued)
 end
 
 local function computeGridMechProtecc(pawn, se)
+	--LOG("computeGridMechProtecc")
 	if se == nil or pawn == nil then return end
 	fooProtecc(pawn, se, se.effect,   false)
 	fooProtecc(pawn, se, se.q_effect, true)
 end
 
 local function EVENT_onSkillBuild(mission, pawn, weaponId, p1, p2, skillEffect)
+	--LOG(">>> (EVENT_onSkillBuild(weaponId: "..tostring(weaponId)..")")
 	computeGridMechProtecc(pawn, skillEffect)
 end
 modapiext.events.onSkillBuild:subscribe(EVENT_onSkillBuild)
@@ -412,7 +447,7 @@ local function fooSkillReleased(pawn)
 
 			local se = SkillEffect()
 
-			Board:AddAlert(pos, "Grid Protection")
+			--Board:AddAlert(pos, "Grid Protection")
 			local testSpace = getProteccSpace()
 			mech:SetInvisible(true)
 			mech:SetSpace(testSpace)
@@ -421,16 +456,18 @@ local function fooSkillReleased(pawn)
 			Board:AddEffect(se)
 
 			if mech:IsShield() and damageRedirected ~= DAMAGE_DEATH then
+				--modApi:scheduleHook(50, function()
 				modApi:scheduleHook(550, function()
+					mech:SetShield(false)
 					mech:SetSpace(pos)
 					mech:SetInvisible(false)
 				end)
-			--else
-				--functions:missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
+			else
+				--in any case -> NO
+				functions:missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
 			end
 
-			--in any case
-			functions:missionData().proteccReloc = { mech:GetId(), pos.x, pos.y } --pleaseworkpleasework
+
 		end
 
 		--Clear data: NOPE, clear once all effects have been resolved,
@@ -472,6 +509,7 @@ modapiext.events.onQueuedSkillStart:subscribe(EVENT_onQueuedSkillStarted)
 
 
 local EVENT_onPawnDamaged = function(mission, pawn, damageTaken)
+
 	if not functions:isMission() or functions:missionData().proteccReloc == nil or
 			functions:missionData().proteccReloc[1] == nil or
 			functions:missionData().proteccReloc[2] == nil or
@@ -479,14 +517,21 @@ local EVENT_onPawnDamaged = function(mission, pawn, damageTaken)
 		return
 	end
 
+	LOGF("EVENT_onPawnDamaged(pawn: %s, damageTaken: %s)", pawn:GetMechName(), tostring(damageTaken))
+
 	local id = functions:missionData().proteccReloc[1]
 	local pos = Point(functions:missionData().proteccReloc[2], functions:missionData().proteccReloc[3])
 
 	local pawn = Board:GetPawn(id)
 	if pawn ~= nil then
-		pawn:SetSpace(pos)
-		pawn:SetInvisible(false)
-		--Board:AddAlert(pos, "GRID PROTECTION")
+		--modApi:scheduleHook(550, function()
+			if pawn:IsShield() then
+				pawn:SetShield(false)
+			end
+			pawn:SetSpace(pos) --test
+			pawn:SetInvisible(false)
+			--Board:AddAlert(pos, "GRID PROTECTION")
+		--end)
 	end
 
 	--Clean data in any case
