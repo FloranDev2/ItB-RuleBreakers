@@ -12,8 +12,9 @@ local functions = require(path.."functions")
 ---------------
 
 local diagonalLaunch = false
-local smoothedLine = true
-local sawbladeRebuildVersion --1: lines, 2: squares, 3: manhattan
+local smoothedLine = false
+local sawbladeRebuildVersion = 1 --1: nothing, 2: push, 3: vortex
+--[[
 modApi.events.onModLoaded:subscribe(function(id)
 	if id ~= mod.id then return end
 	local options = mod_loader.currentModContent[id].options
@@ -22,6 +23,7 @@ modApi.events.onModLoaded:subscribe(function(id)
 	sawbladeRebuildVersion = options["option_sawblade_rebuild"].value
 	LOG("sawbladeRebuildVersion: "..tostring(sawbladeRebuildVersion))
 end)
+]]
 
 
 --------------
@@ -40,7 +42,7 @@ truelch_SawbladeLauncher = Skill:new{
 	PowerCost = 0,
 	
 	Upgrades = 2,
-	UpgradeCost = { 1, 2 },
+	UpgradeCost = { 1, 3 }, --0.0.7 nerf: 2 -> 3 cost for upgrade B
 
 	--Gameplay
 	LaunchDmgData = { { 0.5, 2 } }, --[1] dist / [2] dmg

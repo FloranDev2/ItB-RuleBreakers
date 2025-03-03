@@ -11,7 +11,7 @@ truelch_GridShield = Skill:new{
 	PowerCost = 0,
 	
 	Upgrades = 2,
-	UpgradeCost = { 1, 1 },
+	UpgradeCost = { 1, 2 }, --0.0.7 nerf: 2 core cost for upgrade B
 
 	--Gameplay
 	AutoShield = false, --only for tip image

@@ -46,7 +46,7 @@ truelch_Sawblade = Pawn:new{
 	Health = 1,
 	MoveSpeed = 0,
 	Image = "truelch_sawblade",
-	SkillList = { "truelch_SawbladeSelfDestruct", "truelch_SawbladeDisarm" },
+	SkillList = { "truelch_SawbladeSelfDestruct"--[[, "truelch_SawbladeDisarm"]] },
 	SoundLocation = "", --"/mech/flying/jet_mech/"
 	ImageOffset = 9,
 	DefaultTeam = TEAM_PLAYER,
@@ -113,6 +113,7 @@ function truelch_SawbladeSelfDestruct:GetSkillEffect(p1, p2)
 	return ret
 end
 
+--[[
 truelch_SawbladeDisarm = Skill:new{
 	--Infos
 	Name = "Disarm",
@@ -142,6 +143,7 @@ function truelch_SawbladeDisarm:GetSkillEffect(p1, p2)
 
 	return ret
 end
+]]
 
 
 ---------------

@@ -32,17 +32,19 @@ function mod:init()
 	require(self.scriptPath.."/weapons/rift_inducer")
 
 	--Options
+	--[[
 	modApi:addGenerationOption("option_smoothed_line",
 		"Smooth line",
 		"Damage dealt by the sawblade depends on the distance.",
 		{enabled = false}
 	)
-	
+
 	modApi:addGenerationOption("option_diagonal_launch",
 		"Diagonal launch",
 		"Launching sawblade can also be diagonal.",
 		{enabled = true}
 	)
+	]]
 
 	modApi:addGenerationOption("option_rift_area",
 		"Rift Inducer's second area",
@@ -54,6 +56,18 @@ function mod:init()
 		}
 	)
 
+	modApi:addGenerationOption("option_grid_shield",
+		"Grid Shield",
+		"Second area can be lines from the first point, squares around it or ",
+		{	--1: lines, 2: squares, 3: manhattan
+			values = {1, 2, 3},
+			value = 3,
+			strings = { "Grid self + building below", "Shield nearby building" }
+		}
+	)
+
+
+	--[[
 	modApi:addGenerationOption("option_sawblade_rebuild",
 		"Rebuild Sawblade effect",
 		"What should happen when the sawblade.",
@@ -63,6 +77,7 @@ function mod:init()
 			strings = { "Nothing", "Push", "Vortex" }
 		}
 	)
+	]]
 end
 
 function mod:load(options, version)

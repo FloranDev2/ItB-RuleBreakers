@@ -77,7 +77,7 @@ truelch_RiftInducer = Skill:new{
 
 	--Shop
 	Rarity = 1,
-	PowerCost = 0,
+	PowerCost = 1, --nerf for 0.0.7
 	
 	Upgrades = 2,
 	UpgradeCost = { 1, 2 },

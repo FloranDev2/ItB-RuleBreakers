@@ -1,7 +1,8 @@
 truelch_GridDischarge = Skill:new{
 	--Infos
 	Name = "Grid Discharge",
-	Description = "Deal damage equal to current grid power to an adjacent target.",
+	--Description = "Deal damage equal to current grid power to an adjacent target.",
+	Description = "Deal damage equal to lost grid power (+ 1?) to an adjacent target.",
 	Class = "", --"Science", --now any class
 	Icon = "weapons/truelch_grid_discharge.png",
 
@@ -9,10 +10,11 @@ truelch_GridDischarge = Skill:new{
 	Rarity = 1,
 	PowerCost = 0,
 	
-	Upgrades = 2,
-	UpgradeCost = { 1, 1 },
+	Upgrades = 1, --2
+	UpgradeCost = { 1--[[, 1]] },
 
 	--Gameplay
+	BaseDamage = 7, --or 8?
 	Limited = 1,
 
 	--Art
@@ -31,13 +33,14 @@ truelch_GridDischarge = Skill:new{
 modApi:addWeaponDrop("truelch_GridDischarge")
 
 Weapon_Texts.truelch_GridDischarge_Upgrade1 = "+1 Use"
-Weapon_Texts.truelch_GridDischarge_Upgrade2 = "+1 Use"
+--Weapon_Texts.truelch_GridDischarge_Upgrade2 = "+1 Use"
 
 truelch_GridDischarge_A = truelch_GridDischarge:new{
 	UpgradeDescription = "Increases uses per battle by one.",
 	Limited = 2,
 }
 
+--[[
 truelch_GridDischarge_B = truelch_GridDischarge:new{
 	UpgradeDescription = "Increases uses per battle by one.",
 	Limited = 2,
@@ -46,6 +49,7 @@ truelch_GridDischarge_B = truelch_GridDischarge:new{
 truelch_GridDischarge_AB = truelch_GridDischarge:new{
 	Limited = 3,
 }
+]]
 
 function truelch_GridDischarge:GetTargetArea(point)
 	local ret = PointList()
@@ -61,9 +65,11 @@ end
 function truelch_GridDischarge:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
 
-	local dmg = 5 --initial grid is 5 so preview from hangar is more accurate
+	--local dmg = 5 --initial grid is 5 so preview from hangar is more accurate
+	local dmg = 2 --initial grid is 5 so preview from hangar is more accurate
 	if Game ~= nil then
-		dmg = Game:GetPower():GetValue()
+		--dmg = Game:GetPower():GetValue()
+		dmg = 8 - Game:GetPower():GetValue()
 	end
 
 	local damage = SpaceDamage(p2, dmg)
