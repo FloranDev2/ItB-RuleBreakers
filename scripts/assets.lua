@@ -2,6 +2,8 @@ local mod = mod_loader.mods[modApi.currentMod]
 local resourcePath = mod.resourcePath
 local mechPath = resourcePath .."img/mechs/"
 
+local functions = 
+
 ------------------
 --- TRAIT ICON ---
 ------------------
@@ -27,6 +29,11 @@ modApi:appendAsset("img/weapons/truelch_rift_inducer.png",      resourcePath.."i
 modApi:appendAsset("img/combat/icons/icon_swap_impossible.png", resourcePath.."img/combat/icons/icon_swap_impossible.png")
 	Location["combat/icons/icon_swap_impossible.png"] = Point(-10, 16)
 
+------------
+--- MISC ---
+------------
+modApi:appendAsset("img/combat/tile_icon/tile_cross.png", resourcePath.."img/combat/tile_icon/tile_cross.png")
+	Location["combat/tile_icon/tile_cross.png"] = Point(-26, 8) --Point(-13, 8)
 
 -------------
 --- ANIMS ---
@@ -150,7 +157,7 @@ end
 
 local a = ANIMS
 a.mech_grid =         a.MechUnit:new{Image = "units/player/mech_grid.png",          PosX = -20, PosY =  -5 }
-a.mech_grida =        a.MechUnit:new{Image = "units/player/mech_grid_a.png",        PosX = -20, PosY = -25, NumFrames = 4 }
+a.mech_grida =        a.MechUnit:new{Image = "units/player/mech_grid_a.png",        PosX = -20, PosY = -25, NumFrames = 5 }
 a.mech_gridw =        a.MechUnit:new{Image = "units/player/mech_grid_w.png",        PosX = -20, PosY =   4 }
 a.mech_grid_broken =  a.MechUnit:new{Image = "units/player/mech_grid_broken.png",   PosX = -20, PosY =  -5 }
 a.mech_gridw_broken = a.MechUnit:new{Image = "units/player/mech_grid_w_broken.png", PosX = -20, PosY =  -5 }

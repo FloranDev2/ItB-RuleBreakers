@@ -89,6 +89,14 @@ function this:missionData()
 		mission.truelch_RuleBreakers.proteccData = {}
 	end
 
+	--------------
+	--- DEPLOY ---
+	--------------
+	--Tiles that are inside the deployment zone but are NOT building.
+	if mission.truelch_RuleBreakers.deploy == nil then
+		mission.truelch_RuleBreakers.deploy = {}
+	end
+
 	--- RETURN
 	return mission.truelch_RuleBreakers
 end
