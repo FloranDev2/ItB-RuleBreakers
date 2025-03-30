@@ -389,7 +389,9 @@ local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
 		local acid3   = Board:IsAcid(p3)
 		local smoke3  = Board:IsSmoke(p3)
 		local fire3   = Board:IsFire(p3)
-		local crack3  = Board:IsCracked(p3)
+		local crack3  = Board:IsCracked(p3) --doesn't work with Damaged Ice or Damaged Mountains
+
+		--TODO: swapping building with water will put the building in water (still is the case?)
 
 		---- REMOVE EFFECTS (ACID, SHIELD, FIRE, SMOKE, ...) ----
 		if not shield2 then
@@ -433,16 +435,42 @@ local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
 		end
 
 		---- SET BUILDING HEALTH ----
-		local setTerrain2 = SpaceDamage(p2, 0)
-		setTerrain2.iTerrain = tile3
-		ret:AddDamage(setTerrain2)
+		--old way to change terrain:
+		--local setTerrain2 = SpaceDamage(p2, 0)
+		--setTerrain2.iTerrain = tile3
+		--ret:AddDamage(setTerrain2)
+
+		if tile3 == TERRAIN_BUILDING and tile2 == TERRAIN_WATER then
+			--Attempt to fix water <-> building swap
+			--Result: instead of having a building on water, we get an evacuated building. yay
+			Board:SetTerrain(p2, TERRAIN_ROAD)
+			modApi:scheduleHook(550, function()
+			end)
+		end
+		Board:SetTerrain(p2, tile3)
+		
+		--This line below also automatically cracks damaged mountains / ice
 		ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p2:GetString(), tostring(currHealth3), tostring(maxHealth3)))
 
-		local setTerrain3 = SpaceDamage(p3, 0)
-		setTerrain3.iTerrain = tile2
-		ret:AddDamage(setTerrain3)
+		--old way to change terrain:
+		--local setTerrain3 = SpaceDamage(p3, 0)
+		--setTerrain3.iTerrain = tile2
+		--ret:AddDamage(setTerrain3)
+
+		if tile2 == TERRAIN_BUILDING and tile3 == TERRAIN_WATER then
+			--Attempt to fix water <-> building swap
+			--Result: instead of having a building on water, we get an evacuated building. yay
+			Board:SetTerrain(p3, TERRAIN_ROAD)
+			modApi:scheduleHook(550, function()				
+			end)
+		end
+		Board:SetTerrain(p3, tile2)
+
+		--This line below also automatically cracks damaged mountains / ice
 		ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p3:GetString(), tostring(currHealth2), tostring(maxHealth2)))
-		Board:AddEffect(ret) --better to place it here
+
+		--better to place it here
+		Board:AddEffect(ret) 
 
 		---- NEW: RELOCATE UNITS ----
 		--no idea if the delay is needed yet, but let's do this
