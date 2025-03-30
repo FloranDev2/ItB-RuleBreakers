@@ -53,6 +53,7 @@ truelch_SawbladeLauncher = Skill:new{
 
 	EscalatingDamage = 0,
 	Range = 4,
+	--SawbladePawn = "truelch_Sawblade_A",
 	SawbladePawn = "truelch_Sawblade",
 
 	ReturnSelfDamage = 1,

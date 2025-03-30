@@ -31,7 +31,10 @@ function mod:init()
 	--require(self.scriptPath.."test_qte")
 
 	require(self.scriptPath.."pawns")
+
 	require(self.scriptPath.."/weapons/debug_weapon")
+	require(self.scriptPath.."/weapons/test_weapon")
+
 	require(self.scriptPath.."/weapons/sawblade_launcher")
 	require(self.scriptPath.."/weapons/grid_shield")
 	require(self.scriptPath.."/weapons/grid_discharge")

@@ -57,6 +57,7 @@ end
 function truelch_debug_weapon:GetSkillEffect(p1, p2)
 	local ret = SkillEffect()
 
+	--[[
 	--SWAP SPAWNS
 	--LOG("-------------- SWAP SPAWNS:")
 	for _, spawn in ipairs(GetCurrentMission().QueuedSpawns) do
@@ -69,10 +70,14 @@ function truelch_debug_weapon:GetSkillEffect(p1, p2)
 			--ret:AddScript("spawn.location = "..p2:GetString()) --attempt to index global 'spawn' (a nil value)
 		end
 	end
+	]]
 
 	--ret:AddScript(string.format([[Mission:RemoveSpawnPoint(%s)]], p2:GetString()))
 	--ret:AddScript(string.format([[GetCurrentMission():RemoveSpawnPoint(%s)]], p2:GetString()))
-	ret:AddScript(string.format("GetCurrentMission():RemoveSpawnPoint(%s)", p2:GetString()))
+	--ret:AddScript(string.format("GetCurrentMission():RemoveSpawnPoint(%s)", p2:GetString()))
+
+	local tmp = SpaceDamage(p2, 0)
+	ret:AddDamage(tmp)
 
 	return ret
 end

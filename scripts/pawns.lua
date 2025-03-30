@@ -32,11 +32,13 @@ truelch_SawbladeMech = Pawn:new{
 	Name = "Sawblade Mech",
 	Class = "Brute",
 	Health = 3,
-	MoveSpeed = 4, --idea: 3 + 1 if the sawblade isn't on the mech?
+	MoveSpeed = 15,
+	--MoveSpeed = 4, --idea: 3 + 1 if the sawblade isn't on the mech?
 	Image = "mech_sawblade", --"MechPierce"
 	ImageOffset = palette,
-	SkillList = { "truelch_SawbladeLauncher" },
-	--SkillList = { "truelch_SawbladeLauncher", "Ranged_Artillerymech" },
+	--SkillList = { "truelch_SawbladeLauncher" },
+	--SkillList = { "truelch_SawbladeLauncher", "truelch_test_weapon" },
+	SkillList = { "truelch_debug_weapon", "truelch_test_weapon" },
 	SoundLocation = "/mech/brute/pierce_mech/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,
@@ -218,7 +220,7 @@ truelch_GridMech = Pawn:new{
 	Name = "Grid Mech",
 	Class = "Science",
 	Health = 3,
-	MoveSpeed = 4,
+	MoveSpeed = 8, --4,
 	Image = "mech_grid",
 	ImageOffset = palette,
 	SkillList = { "truelch_GridShield", "truelch_GridDischarge" },
@@ -283,7 +285,7 @@ local foo_damageRedirected = -1
 local foo_origin = Point(-1, -1)
 local foo_pawnId = -1
 function fooProteccQueued()
-	LOG("fooProteccQueued()")
+	--LOG("fooProteccQueued()")
 
 	if foo_damageRedirected == -1 or foo_origin == Point(-1, -1) or foo_pawnId == -1 or functions == nil or not functions:isMission() then
 		LOG("fooProteccQueued() --- ERROR ---> RETURN")
@@ -296,7 +298,7 @@ function fooProteccQueued()
 	for _, data in ipairs(functions:missionData().proteccData[foo_pawnId]) do
 		count = count + 1
 	end
-	LOG("count: "..tostring(count))
+	--LOG("count: "..tostring(count))
 end
 
 local function fooProtecc(pawn, se, effects, isQueued)
@@ -345,7 +347,7 @@ local function fooProtecc(pawn, se, effects, isQueued)
 	                    --Sometimes, origin will have a very random value, like: Point( 1869373284, 1919247457 ) and after that, it's a correct value.
 	                    --This problem vanished after I put LOGs wtf
                 	else
-                		LOG("-------------- IS QUEUED")
+                		--LOG("-------------- IS QUEUED")
                 		--[[
 						functions:missionData().proteccData = {
 							[107] = { --Firefly's id
@@ -583,10 +585,10 @@ truelch_DislocationMech = Pawn:new{
 	Name = "Dislocation Mech",
 	Class = "Ranged",
 	Health = 2,
-	MoveSpeed = 2, --0.0.7 nerf
+	MoveSpeed = 15, --2, --0.0.7 nerf
 	Image = "mech_dislocation",
 	ImageOffset = palette,
-	SkillList = { "truelch_RiftInducer"--[[, "truelch_debug_weapon"]] },
+	SkillList = { "truelch_RiftInducer", "truelch_test_weapon" },
 	SoundLocation = "/mech/distance/artillery/",
 	DefaultTeam = TEAM_PLAYER,
 	ImpactMaterial = IMPACT_METAL,

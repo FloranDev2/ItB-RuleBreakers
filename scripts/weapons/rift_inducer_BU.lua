@@ -26,6 +26,13 @@ local mod = mod_loader.mods[modApi.currentMod]
 local path = mod.scriptPath
 local functions = require(path.."functions")
 
+local riftAreaVersion --1: lines, 2: squares, 3: manhattan
+modApi.events.onModLoaded:subscribe(function(id)
+	if id ~= mod.id then return end
+	local options = mod_loader.currentModContent[id].options
+	riftAreaVersion = options["option_rift_area"].value
+	--LOG("riftAreaVersion: "..tostring(riftAreaVersion))
+end)
 
 local riftPawnExceptions = {
 	"Dam_Pawn",
@@ -203,16 +210,65 @@ end
 function truelch_RiftInducer:GetSecAreaPoints(p2)
 	local points = {}
 
+	--LOGF("truelch_RiftInducer:GetSecAreaPoints(p2: %s) -> riftAreaVersion: %s", p2:GetString(), tostring(riftAreaVersion))
+
+	--riftAreaVersion --1: lines, 2: squares, 3: manhattan
+	--LOG("riftAreaVersion: "..tostring(riftAreaVersion)) --3
+
+	--[[
 	for j = 0, 7 do
 		for i = 0, 7 do
 			local curr = Point(i, j)
-			local dist = p2:Manhattan(curr)
-			if isLocOkForRift(curr) and dist <= self.SecondTargetRange and dist > 0 then
+			if curr ~= p2 then
 				points[#points + 1] = curr
-			end 
+			end
 		end
 	end
+	]]
+	
+	if riftAreaVersion == 1 then
+		--Lines
+		for dir = DIR_START, DIR_END do
+			for i = 1, self.SecondTargetRange do
+				local curr = p2 + DIR_VECTORS[dir] * i
+				local pawn = Board:GetPawn(curr)
 
+				if isLocOkForRift(curr) then
+					--ret:push_back(curr)
+					points[#points + 1] = curr
+					--LOGF(" -> added: %s", curr:GetString())
+				end
+			end
+		end
+	elseif riftAreaVersion == 2 then
+		--Square
+		for j = -self.SecondTargetRange, self.SecondTargetRange do
+			for i = -self.SecondTargetRange, self.SecondTargetRange do
+				local curr = p2 + Point(i, j)
+				if isLocOkForRift(curr) and i ~= 0 or j ~= 0 then
+					points[#points + 1] = curr
+					--LOGF(" -> added: %s", curr:GetString())
+				end
+			end
+		end
+	elseif riftAreaVersion == 3 then --we use this one
+		--Distance (lazy way)		
+		for j = 0, 7 do
+			for i = 0, 7 do
+				local curr = Point(i, j)
+				local dist = p2:Manhattan(curr)
+				--LOGF(" -> curr: %s, dist: %s", curr:GetString(), tostring(dist))
+				if isLocOkForRift(curr) and dist <= self.SecondTargetRange and dist > 0 then
+					points[#points + 1] = curr
+					--LOGF(" ---> added: %s", curr:GetString())
+				end 
+			end
+		end
+	else
+		LOG("truelch_RiftInducer:GetSecAreaPoints -> unexpected riftAreaVersion: "..tostring(riftAreaVersion))
+	end
+
+	--Return
 	return points
 end
 
@@ -242,10 +298,28 @@ end
 
 function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
 	local ret = PointList()
+	
+	--[[
+	for dir = DIR_START, DIR_END do
+		for i = 1, self.SecondTargetRange do
+			local curr = p2 + DIR_VECTORS[dir] * i
+			local pawn = Board:GetPawn(curr)
+
+			if isLocOkForRift(curr) then
+				ret:push_back(curr)
+			end
+		end
+	end
+	]]
+
+	--LOG("truelch_RiftInducer:GetSecondTargetArea - START")
 
 	for _, curr in pairs(self:GetSecAreaPoints(p2)) do
+		--LOG("truelch_RiftInducer:GetSecondTargetArea -> curr: "..curr:GetString())
 		ret:push_back(curr)
 	end
+
+	--LOG("truelch_RiftInducer:GetSecondTargetArea - END")
 
 	return ret
 end
@@ -298,6 +372,9 @@ end
 --Exclude p2 and p3
 --Take points that are actually valid (no mountains, lava, water, ice, etc.)
 local function GetValidTempSpawnPoint(p2, p3)
+
+	--return Point(-1, -1) --test
+
 	for j = 0, 7 do
 		for i = 0, 7 do
 			local curr = Point(i, j)
@@ -306,7 +383,9 @@ local function GetValidTempSpawnPoint(p2, p3)
 			end
 		end
 	end
+
 	LOG("GetValidTempSpawnPoint: couldn't find a fitting temporary space!")
+
 	return Point(-1, -1)
 end
 
@@ -328,11 +407,102 @@ function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
 	end
 	second_damage.bHidePath = true
 	ret:AddArtillery(second_damage, self.UpShot)
+
+	--SWAP TILES!!!
+	local tile2 = Board:GetTerrain(p2)
+	local currHealth2 = Board:GetHealth(p2)
+	local maxHealth2 = Board:GetHealth(p2)
+
+	local tile3 = Board:GetTerrain(p3)
+	local currHealth3 = Board:GetHealth(p3)
+	local maxHealth3 = Board:GetHealth(p3)
+
+	---- P2 ----
+	local riftAnim2 = SpaceDamage(p2, 0)
+	--riftAnim2.sAnimation = "RiftUnit"	
+	riftAnim2.sSound = "/weapons/swap"
+	--Remove statuses from other tile
+	--Add statuses from other tile
+	self:ComputeTile(ret, riftAnim2, p2, p3)
+	ret:AddDamage(riftAnim2)
+
+	---- P3 ----
+	local riftAnim3 = SpaceDamage(p3, 0)
+	--riftAnim3.sAnimation = "rift_unit"
+	--riftAnim2.sSound = "/weapons/swap" --no need to play the sound twice
+	--Remove statuses from other tile	
+	--Add statuses from other tile
+	self:ComputeTile(ret, riftAnim3, p3, p2)
+	ret:AddDamage(riftAnim3)
+
+	ret:AddScript(string.format("Board:SetTerrain(%s, %s)",    p2:GetString(), tostring(tile3)))
+	ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p2:GetString(), tostring(currHealth3), tostring(maxHealth3)))
+
+	ret:AddScript(string.format("Board:SetTerrain(%s, %s)",    p3:GetString(), tostring(tile2)))
+	ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p3:GetString(), tostring(currHealth2), tostring(maxHealth2)))
+
+	--SWAP UNITS
+	local delay = Board:IsPawnSpace(p3) and 0 or FULL_DELAY
+	ret:AddTeleport(p2, p3, delay)
+	
+	if delay ~= FULL_DELAY then
+		ret:AddTeleport(p3, p2, FULL_DELAY)
+	end
+
+	--SWAP SPAWNS (-> moved to the skill ended because swapping two spawns is buggy)
+	--or I could just do nothing when we swap 2 spawns
+
+	--[[
+	local m = GetCurrentMission()
+
+	local spawn2 = m:GetSpawnPointData(p2)
+	local spawn3 = m:GetSpawnPointData(p3)
+
+	if spawn2 ~= nil and spawn3 ~= nil then
+		--Swap. But idk if it'll work if I do this:
+		--Or maybe I should move temporarily one of them to a tile free of spawn and then move it back
+		local tmpPos = GetValidTempSpawnPoint(p2, p3)
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", p2:GetString(), tmpPos:GetString()))
+		ret:AddDelay(0.5)
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", p3:GetString(), p2:GetString()))
+		ret:AddDelay(0.5)
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", tmpPos:GetString(), p3:GetString()))
+
+	elseif spawn2 ~= nil then
+		--Move spawn2 to p3
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", p2:GetString(), p3:GetString()))
+
+	elseif spawn3 ~= nil then
+		--Move spawn3 to p2
+		ret:AddScript(string.format("GetCurrentMission():MoveSpawnPoint(%s, %s)", p3:GetString(), p2:GetString()))
+
+	else
+		--No spawn on both tiles -> do nothing
+
+	end
+	]]	
 	
 	return ret
 end
 
+--[[
+LOG(save_table(GetCurrentMission().QueuedSpawns))
+
+[1] = {
+	["type"] = "Firefly1", 
+	["location"] = Point( 5, 3 ), 
+	["turns"] = 1, 
+	["id"] = 103 
+},
+[2] = {
+	["type"] = "Moth1", 
+	["location"] = Point( 7, 4 ), 
+	["turns"] = 1, 
+	["id"] = 104 
+}
+]]
 local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
+    if not functions:isMission() then return end
 
 	if type(weaponId) == 'table' then weaponId = weaponId.__Id end
 
@@ -341,164 +511,77 @@ local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
 			weaponId == "truelch_RiftInducer_B" or
 			weaponId == "truelch_RiftInducer_AB" then
 		
-		--Is Rift Inducer. Should we do the whole logic here or just the spawn swap?
-		--Advantages: easier to do custom timings / delays
-		--Inconvenients: I don't think potential kills will be credited to the Mech
-
-		local ret = SkillEffect()
-
-		---- TEST: MOVE UNITS TO (-1, -1) ----
-		local pawn2 = Board:GetPawn(p2)
-		local pawn3 = Board:GetPawn(p3)
-
-		if pawn2 ~= nil then
-			pawn2:SetSpace(Point(-1, -1))
-		end
-
-		if pawn3 ~= nil then
-			pawn3:SetSpace(Point(-1, -1))
-		end
-
-		---- SPAWN SWAP ----
 		local spawn2 = mission:GetSpawnPointData(p2)
 		local spawn3 = mission:GetSpawnPointData(p3)
 
-		if spawn2 ~= nil and spawn3 == nil then
+		if spawn2 ~= nil and spawn3 ~= nil then
+			--I can just... do nothing
+			--The only thing that'd make it visible that I didn't swap emerge points is the pilot that reveals emerging vek lol
+			--Or I could change the spawn data from both in a single frame
+			--LOG("---------------- [A] Swap")
+
+			--V0: do nothing lol
+
+			--V1: moving p2 to a temporary point -> move p3 to p2 -> move temp (p2) to p3
+			--Note: trying to swap two spawns in the same frame will result on a spawn overriding another
+			--I've also tried moving temporarily to (-1, -1) but it just put back in a very random position for some reason
+			--[[
+			local tmpPos = GetValidTempSpawnPoint(p2, p3)
+			mission:MoveSpawnPoint(p2, tmpPos)
+			modApi:scheduleHook(550, function()
+				mission:MoveSpawnPoint(p3, p2)
+				modApi:scheduleHook(550, function()
+					mission:MoveSpawnPoint(tmpPos, p3)
+				end)
+			end)
+			]]
+
+			--V2: inverting data (or pawns if swapping data doesn't work)
+			--Okay, doing it at the same frame will make p2 emerge!
+			--V2a
+			--[[
+			mission:ModifySpawnPoint(p2, spawn3)
+			modApi:scheduleHook(550, function()
+				mission:ModifySpawnPoint(p3, spawn2)
+			end)
+			]]
+
+			--V2b
+			--Maybe I should have modified the spawn data location and injected afterwards
+			--Making it in the same frame emerge both (okay, even with the delay it emerges both)
+			--[[
+			spawn2.location = p3
+			spawn3.location = p2
+			mission:ModifySpawnPoint(p2, spawn3)
+			modApi:scheduleHook(550, function()
+				mission:ModifySpawnPoint(p3, spawn2)
+			end)
+			]]
+
+			--V3: just change pawn type
+			--This also emerges both... *sigh*
+			--[[
+			mission:ChangeSpawnPointPawnType(p2, spawn3.type)
+				modApi:scheduleHook(550, function()
+			mission:ChangeSpawnPointPawnType(p3, spawn2.type)
+			end)
+			]]
+
+		elseif spawn2 ~= nil then
+			--Move spawn2 to p3
+			--LOG("---------------- [B] p2 -> p3")
 			mission:MoveSpawnPoint(p2, p3)
 
-		elseif spawn3 ~= nil and spawn2 == nil then
+		elseif spawn3 ~= nil then
+			--Move spawn3 to p2
+			--LOG("---------------- [C] p3 -> p2")
 			mission:MoveSpawnPoint(p3, p2)
-		end
 
-		---- REGISTER DATA ----
-		local tile2 = Board:GetTerrain(p2)
-		local currHealth2 = Board:GetHealth(p2)
-		local maxHealth2 = Board:GetMaxHealth(p2) --local maxHealth2 = Board:GetHealth(p2) --wups, I wrongly NOT used GetMaxHealth
-		--shield, acid, smoke, fire, frozen, crack, ???
-		local shield2 = Board:IsShield(p2)
-		local acid2   = Board:IsAcid(p2)
-		local smoke2  = Board:IsSmoke(p2)
-		local fire2   = Board:IsFire(p2)
-		local crack2  = Board:IsCracked(p2)
+		else
+			--No spawn on both tiles -> do nothing
+			--LOG("---------------- [D] no spawns")
 
-		local tile3 = Board:GetTerrain(p3)
-		local currHealth3 = Board:GetHealth(p3)
-		local maxHealth3 = Board:GetMaxHealth(p3) --local maxHealth3 = Board:GetHealth(p3) --same as above
-		--shield, acid, smoke, fire, frozen, crack, ???
-		local shield3 = Board:IsShield(p3)
-		local acid3   = Board:IsAcid(p3)
-		local smoke3  = Board:IsSmoke(p3)
-		local fire3   = Board:IsFire(p3)
-		local crack3  = Board:IsCracked(p3)
-
-		---- REMOVE EFFECTS (ACID, SHIELD, FIRE, SMOKE, ...) ----
-		if not shield2 then
-			--ret:AddScript("Board:SetShield("..p3:GetString()..", false)")
-			Board:SetShield(p3, false)
 		end
-		if not shield3 then
-			--ret:AddScript("Board:SetShield("..p2:GetString()..", false)")
-			Board:SetShield(p2, false)
-		end
-
-		if not acid2 then
-			Board:SetAcid(p3, false)
-		end
-		if not acid3 then
-			Board:SetAcid(p2, false)
-		end
-
-		if not fire2 then
-			Board:SetFire(p3, false)
-		end
-		if not fire3 then
-			Board:SetFire(p2, false)
-		end
-
-		if not smoke2 then
-			--1st bool argument (false) remove smoke.
-			--Regardless of the second bool argument, the smoke disappears instantly
-			Board:SetSmoke(p3, false, false) --idk why there are 2 bool arguments, maybe showing the animation of appear/disappear?
-		end
-		if not smoke3 then
-			Board:SetSmoke(p2, false, false) --idk why there are 2 bool arguments, maybe showing the animation of appear/disappear?
-		end
-
-		--Problem: removing crack from cracked frozen water will not revert it to frozen water but to regular water
-		if crack2 then
-			Board:SetCracked(p3, false)
-		end
-		if crack3 then
-			Board:SetCracked(p2, false)
-		end
-
-		---- SET BUILDING HEALTH ----
-		local setTerrain2 = SpaceDamage(p2, 0)
-		setTerrain2.iTerrain = tile3
-		ret:AddDamage(setTerrain2)
-		ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p2:GetString(), tostring(currHealth3), tostring(maxHealth3)))
-
-		local setTerrain3 = SpaceDamage(p3, 0)
-		setTerrain3.iTerrain = tile2
-		ret:AddDamage(setTerrain3)
-		ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p3:GetString(), tostring(currHealth2), tostring(maxHealth2)))
-		Board:AddEffect(ret) --better to place it here
-
-		---- NEW: RELOCATE UNITS ----
-		--no idea if the delay is needed yet, but let's do this
-		modApi:scheduleHook(550, function()
-		if pawn2 ~= nil then
-			pawn2:SetSpace(p3)
-		end
-
-		if pawn3 ~= nil then
-			pawn3:SetSpace(p2)
-		end
-
-		modApi:scheduleHook(550, function()
-
-		---- ADD STATUS (ACID, SHIELD, FIRE, SMOKE, ...) ----
-		if shield2 then
-			Board:AddShield(p3)
-		end
-		if shield3 then
-			Board:AddShield(p2)
-		end
-
-		if acid2 then
-			--ret:AddScript("Board:SetAcid("..pB:GetString()..", false)")
-			Board:SetAcid(p3, true)
-		end
-		if acid3 then
-			Board:SetAcid(p2, true)
-		end
-
-		if fire2 then
-			Board:SetFire(p3, true)
-		end
-		if fire3 then
-			Board:SetFire(p2, true)
-		end
-
-		if smoke2 then
-			--true, false: smoke appears with an animation
-			--true, true: smoke appears instantly
-			Board:SetSmoke(p3, true, false)
-		end
-		if smoke3 then
-			Board:SetSmoke(p2, true, false)
-		end
-
-		if crack2 then
-			Board:SetCracked(p3, true)
-		end
-		if crack3 then
-			Board:SetCracked(p2, true)
-		end
-
-		end)
-		end)
-
 	end
 end
 

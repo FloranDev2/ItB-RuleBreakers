@@ -54,14 +54,15 @@ truelch_Sawblade = Pawn:new{
 	Corpse = false,
 	Flying = true,
 }
-AddPawn("truelch_Sawblade")
+--AddPawn("truelch_Sawblade")
 
 truelch_Sawblade_A = truelch_Sawblade:new{
 	Name = "Reinforced Sawblade",
 	Health = 3,
 	Image = "truelch_sawblade_A",
+	--SkillList = { "truelch_SawbladeSelfDestruct" }, --why is it necessary? WTF even with this it doesn't work
 }
-AddPawn("truelch_Sawblade_A")
+--AddPawn("truelch_Sawblade_A")
 
 
 -----------------------------
