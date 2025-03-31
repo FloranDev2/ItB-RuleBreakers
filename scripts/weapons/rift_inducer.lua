@@ -33,18 +33,12 @@ local riftPawnExceptions = {
 }
 
 local function isRiftExc(pawn)
-	--LOG("isRiftExc?...")
 	if pawn == nil then
-		--LOG("... RETURN")
 		return false
 	end
 
-	--LOG("... pawn: "..pawn:GetType())
-
 	for _, rEx in ipairs(riftPawnExceptions) do
-		--LOGF("rEx: %s, pawn type: %s", rEx, pawn:GetType())
 		if pawn:GetType() == rEx then
-			--LOG("rift pawn exception: "..pawn:GetType())
 			return true
 		end
 	end
@@ -183,16 +177,12 @@ truelch_RiftInducer_AB = truelch_RiftInducer:new{
 function truelch_RiftInducer:GetTargetArea(point)
 	local ret = PointList()
 
-	--LOGF("truelch_RiftInducer:GetTargetArea(point: %s)", point:GetString())
-
 	for dir = DIR_START, DIR_END do
 		for i = 2, 7 do
 			local curr = point + DIR_VECTORS[dir] * i
 			local pawn = Board:GetPawn(curr)
-
 			if isLocOkForRift(curr) then
 				ret:push_back(curr)
-				--LOGF(" -> added: %s", curr:GetString())
 			end
 		end
 	end
@@ -250,51 +240,6 @@ function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
 	return ret
 end
 
---[[
-pA might not even be needed after all...
-
-pA = p2 and pB = p3
-or
-pA = p3 and pB = p2
-]]
-function truelch_RiftInducer:ComputeTile(ret, damage, pA, pB)
-	if Board:IsAcid(pB) then
-		--damage.iAcid = EFFECT_CREATE
-	else
-		--LOG("------------ here")
-		--damage.iAcid = EFFECT_REMOVE --doesn't work
-		ret:AddScript("Board:SetAcid("..pB:GetString()..", false)")
-	end
-
-	---Fire
-	if Board:IsFire(pB) then
-		damage.iFire = EFFECT_CREATE
-	else
-		damage.iFire = EFFECT_REMOVE
-	end
-
-	---Shield
-	if Board:IsShield(pB) then
-		damage.iShield = EFFECT_CREATE
-	else
-		--damage.iShield = EFFECT_REMOVE --doesn't work
-		ret:AddScript("Board:SetShield("..pB:GetString()..", false)")
-	end
-
-	if self.SwapSmoke then
-		if Board:IsSmoke(pB) then
-			damage.iSmoke = EFFECT_CREATE
-		else
-			damage.iSmoke = EFFECT_REMOVE
-		end
-	end
-
-	--[[
-	TODO:
-	- crack (not literally, come on)
-	]]
-end
-
 --Exclude p2 and p3
 --Take points that are actually valid (no mountains, lava, water, ice, etc.)
 local function GetValidTempSpawnPoint(p2, p3)
@@ -333,200 +278,195 @@ function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
 end
 
 local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
-
 	if type(weaponId) == 'table' then weaponId = weaponId.__Id end
 
-	if weaponId == "truelch_RiftInducer" or
-			weaponId == "truelch_RiftInducer_A" or
-			weaponId == "truelch_RiftInducer_B" or
-			weaponId == "truelch_RiftInducer_AB" then
-		
-		--Is Rift Inducer. Should we do the whole logic here or just the spawn swap?
-		--Advantages: easier to do custom timings / delays
-		--Inconvenients: I don't think potential kills will be credited to the Mech
+	if weaponId ~= "truelch_RiftInducer" and weaponId ~= "truelch_RiftInducer_A"
+		and weaponId ~= "truelch_RiftInducer_B" and weaponId ~= "truelch_RiftInducer_AB" then return end
 
-		local ret = SkillEffect()
+	---- MOVE UNITS TO (-1, -1) ----
+	local pawn2 = Board:GetPawn(p2)
+	local pawn3 = Board:GetPawn(p3)
 
-		---- TEST: MOVE UNITS TO (-1, -1) ----
-		local pawn2 = Board:GetPawn(p2)
-		local pawn3 = Board:GetPawn(p3)
+	if pawn2 ~= nil then
+		pawn2:SetSpace(Point(-1, -1))
+	end
 
-		if pawn2 ~= nil then
-			pawn2:SetSpace(Point(-1, -1))
-		end
+	if pawn3 ~= nil then
+		pawn3:SetSpace(Point(-1, -1))
+	end
 
-		if pawn3 ~= nil then
-			pawn3:SetSpace(Point(-1, -1))
-		end
+	---- SPAWN SWAP ----
+	local spawn2 = mission:GetSpawnPointData(p2)
+	local spawn3 = mission:GetSpawnPointData(p3)
 
-		---- SPAWN SWAP ----
-		local spawn2 = mission:GetSpawnPointData(p2)
-		local spawn3 = mission:GetSpawnPointData(p3)
+	if spawn2 ~= nil and spawn3 == nil then
+		mission:MoveSpawnPoint(p2, p3)
 
-		if spawn2 ~= nil and spawn3 == nil then
-			mission:MoveSpawnPoint(p2, p3)
+	elseif spawn3 ~= nil and spawn2 == nil then
+		mission:MoveSpawnPoint(p3, p2)
+	end
 
-		elseif spawn3 ~= nil and spawn2 == nil then
-			mission:MoveSpawnPoint(p3, p2)
-		end
+	---- REGISTER DATA ----
+	local tile2 = Board:GetTerrain(p2)
+	local currHealth2 = Board:GetHealth(p2)
+	local maxHealth2 = Board:GetMaxHealth(p2)
+	--shield, acid, smoke, fire, frozen, crack, ???
+	local shield2 = Board:IsShield(p2)
+	local acid2   = Board:IsAcid(p2)
+	local smoke2  = Board:IsSmoke(p2)
+	local fire2   = Board:IsFire(p2)
+	local crack2  = Board:IsCracked(p2)
 
-		---- REGISTER DATA ----
-		local tile2 = Board:GetTerrain(p2)
-		local currHealth2 = Board:GetHealth(p2)
-		local maxHealth2 = Board:GetMaxHealth(p2) --local maxHealth2 = Board:GetHealth(p2) --wups, I wrongly NOT used GetMaxHealth
-		--shield, acid, smoke, fire, frozen, crack, ???
-		local shield2 = Board:IsShield(p2)
-		local acid2   = Board:IsAcid(p2)
-		local smoke2  = Board:IsSmoke(p2)
-		local fire2   = Board:IsFire(p2)
-		local crack2  = Board:IsCracked(p2)
+	local tile3 = Board:GetTerrain(p3)
+	local currHealth3 = Board:GetHealth(p3)
+	local maxHealth3 = Board:GetMaxHealth(p3)
+	--shield, acid, smoke, fire, frozen, crack, ???
+	local shield3 = Board:IsShield(p3)
+	local acid3   = Board:IsAcid(p3)
+	local smoke3  = Board:IsSmoke(p3)
+	local fire3   = Board:IsFire(p3)
+	local crack3  = Board:IsCracked(p3) --doesn't work with Damaged Ice or Damaged Mountains
 
-		local tile3 = Board:GetTerrain(p3)
-		local currHealth3 = Board:GetHealth(p3)
-		local maxHealth3 = Board:GetMaxHealth(p3) --local maxHealth3 = Board:GetHealth(p3) --same as above
-		--shield, acid, smoke, fire, frozen, crack, ???
-		local shield3 = Board:IsShield(p3)
-		local acid3   = Board:IsAcid(p3)
-		local smoke3  = Board:IsSmoke(p3)
-		local fire3   = Board:IsFire(p3)
-		local crack3  = Board:IsCracked(p3) --doesn't work with Damaged Ice or Damaged Mountains
+	---- REMOVE EFFECTS (ACID, SHIELD, FIRE, SMOKE, ...) ----
+	if not shield2 then
+		Board:SetShield(p3, false)
+	end
+	if not shield3 then
+		Board:SetShield(p2, false)
+	end
 
-		--TODO: swapping building with water will put the building in water (still is the case?)
+	if not acid2 then
+		Board:SetAcid(p3, false)
+	end
+	if not acid3 then
+		Board:SetAcid(p2, false)
+	end
 
-		---- REMOVE EFFECTS (ACID, SHIELD, FIRE, SMOKE, ...) ----
-		if not shield2 then
-			--ret:AddScript("Board:SetShield("..p3:GetString()..", false)")
-			Board:SetShield(p3, false)
-		end
-		if not shield3 then
-			--ret:AddScript("Board:SetShield("..p2:GetString()..", false)")
-			Board:SetShield(p2, false)
-		end
+	if not fire2 then
+		Board:SetFire(p3, false)
+	end
+	if not fire3 then
+		Board:SetFire(p2, false)
+	end
 
-		if not acid2 then
-			Board:SetAcid(p3, false)
-		end
-		if not acid3 then
-			Board:SetAcid(p2, false)
-		end
+	if not smoke2 then
+		--1st bool argument (false) remove smoke.
+		--Regardless of the second bool argument, the smoke disappears instantly
+		Board:SetSmoke(p3, false, false)
+	end
+	if not smoke3 then
+		Board:SetSmoke(p2, false, false)
+	end
 
-		if not fire2 then
-			Board:SetFire(p3, false)
-		end
-		if not fire3 then
-			Board:SetFire(p2, false)
-		end
+	--Problem: removing crack from cracked frozen water will not revert it to frozen water but to regular water
+	--I'll comment that part temporarily...
+	if crack2 and not crack3 then
+		local uncrackEffect = SkillEffect()
+		uncrackEffect:AddScript(string.format("Board:SetCracked(%s, false)", p2:GetString()))
+		Board:AddEffect(uncrackEffect)
+	end
+	if crack3 and not crack2 then
+		local uncrackEffect = SkillEffect()
+		uncrackEffect:AddScript(string.format("Board:SetCracked(%s, false)", p3:GetString()))
+		Board:AddEffect(uncrackEffect)
+	end
 
-		if not smoke2 then
-			--1st bool argument (false) remove smoke.
-			--Regardless of the second bool argument, the smoke disappears instantly
-			Board:SetSmoke(p3, false, false) --idk why there are 2 bool arguments, maybe showing the animation of appear/disappear?
-		end
-		if not smoke3 then
-			Board:SetSmoke(p2, false, false) --idk why there are 2 bool arguments, maybe showing the animation of appear/disappear?
-		end
+	---- CHANGE TERRAIN EFFECT ----
+	local changeTerrainEffect = SkillEffect()
 
-		--Problem: removing crack from cracked frozen water will not revert it to frozen water but to regular water
-		if crack2 then
-			Board:SetCracked(p3, false)
-		end
-		if crack3 then
-			Board:SetCracked(p2, false)
-		end
-
-		---- SET BUILDING HEALTH ----
-		--old way to change terrain:
-		--local setTerrain2 = SpaceDamage(p2, 0)
-		--setTerrain2.iTerrain = tile3
-		--ret:AddDamage(setTerrain2)
-
-		if tile3 == TERRAIN_BUILDING and tile2 == TERRAIN_WATER then
-			--Attempt to fix water <-> building swap
-			--Result: instead of having a building on water, we get an evacuated building. yay
-			Board:SetTerrain(p2, TERRAIN_ROAD)
-			modApi:scheduleHook(550, function()
-			end)
-		end
+	---- CHANGE TO ROAD ----
+	if tile3 == TERRAIN_BUILDING then
+		local damage = SpaceDamage(p2, 0)
+		damage.iTerrain = TERRAIN_ROAD
+		changeTerrainEffect:AddDamage(damage)
+	else
 		Board:SetTerrain(p2, tile3)
-		
-		--This line below also automatically cracks damaged mountains / ice
-		ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p2:GetString(), tostring(currHealth3), tostring(maxHealth3)))
+	end
 
-		--old way to change terrain:
-		--local setTerrain3 = SpaceDamage(p3, 0)
-		--setTerrain3.iTerrain = tile2
-		--ret:AddDamage(setTerrain3)
-
-		if tile2 == TERRAIN_BUILDING and tile3 == TERRAIN_WATER then
-			--Attempt to fix water <-> building swap
-			--Result: instead of having a building on water, we get an evacuated building. yay
-			Board:SetTerrain(p3, TERRAIN_ROAD)
-			modApi:scheduleHook(550, function()				
-			end)
-		end
+	if tile2 == TERRAIN_BUILDING then
+		local damage = SpaceDamage(p3, 0)
+		damage.iTerrain = TERRAIN_ROAD
+		changeTerrainEffect:AddDamage(damage)
+	else
 		Board:SetTerrain(p3, tile2)
+	end
 
-		--This line below also automatically cracks damaged mountains / ice
-		ret:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p3:GetString(), tostring(currHealth2), tostring(maxHealth2)))
+	---- DELAY ----
+	changeTerrainEffect:AddDelay(0.1)
 
-		--better to place it here
-		Board:AddEffect(ret) 
+	---- CHANGE TO BUILDING ----
+	if tile3 == TERRAIN_BUILDING then
+		local damage = SpaceDamage(p2, 0)
+		damage.iTerrain = TERRAIN_BUILDING
+		changeTerrainEffect:AddDamage(damage)
+	else
+		--Nothing to do?
+	end
 
-		---- NEW: RELOCATE UNITS ----
-		--no idea if the delay is needed yet, but let's do this
-		modApi:scheduleHook(550, function()
-		if pawn2 ~= nil then
-			pawn2:SetSpace(p3)
-		end
+	if tile2 == TERRAIN_BUILDING then
+		local damage = SpaceDamage(p3, 0)
+		damage.iTerrain = TERRAIN_BUILDING
+		changeTerrainEffect:AddDamage(damage)
+	else
+		--Nothing to do?
+	end
 
-		if pawn3 ~= nil then
-			pawn3:SetSpace(p2)
-		end
+	---- ADD TERRAIN EFFECT ----
+	Board:AddEffect(changeTerrainEffect)
+	
+	---- SET HEALTH EFFECT ----
+	modApi:scheduleHook(550, function()
+		local healthEffect = SkillEffect()
+		healthEffect:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p2:GetString(), tostring(currHealth3), tostring(maxHealth3)))
+		healthEffect:AddScript(string.format("Board:SetHealth(%s, %s, %s)", p3:GetString(), tostring(currHealth2), tostring(maxHealth2)))
+		Board:AddEffect(healthEffect)
+	end)
 
-		modApi:scheduleHook(550, function()
+	---- NEW: RELOCATE UNITS ----
+	if pawn2 ~= nil then
+		pawn2:SetSpace(p3)
+	end
 
-		---- ADD STATUS (ACID, SHIELD, FIRE, SMOKE, ...) ----
-		if shield2 then
-			Board:AddShield(p3)
-		end
-		if shield3 then
-			Board:AddShield(p2)
-		end
+	if pawn3 ~= nil then
+		pawn3:SetSpace(p2)
+	end
 
-		if acid2 then
-			--ret:AddScript("Board:SetAcid("..pB:GetString()..", false)")
-			Board:SetAcid(p3, true)
-		end
-		if acid3 then
-			Board:SetAcid(p2, true)
-		end
+	---- ADD STATUS (ACID, SHIELD, FIRE, SMOKE, ...) ----
+	if shield2 then
+		Board:AddShield(p3)
+	end
+	if shield3 then
+		Board:AddShield(p2)
+	end
 
-		if fire2 then
-			Board:SetFire(p3, true)
-		end
-		if fire3 then
-			Board:SetFire(p2, true)
-		end
+	if acid2 then
+		Board:SetAcid(p3, true)
+	end
+	if acid3 then
+		Board:SetAcid(p2, true)
+	end
 
-		if smoke2 then
-			--true, false: smoke appears with an animation
-			--true, true: smoke appears instantly
-			Board:SetSmoke(p3, true, false)
-		end
-		if smoke3 then
-			Board:SetSmoke(p2, true, false)
-		end
+	if fire2 then
+		Board:SetFire(p3, true)
+	end
+	if fire3 then
+		Board:SetFire(p2, true)
+	end
 
-		if crack2 then
-			Board:SetCracked(p3, true)
-		end
-		if crack3 then
-			Board:SetCracked(p2, true)
-		end
+	if smoke2 then
+		--true, false: smoke appears with an animation
+		--true, true: smoke appears instantly
+		Board:SetSmoke(p3, true, false)
+	end
+	if smoke3 then
+		Board:SetSmoke(p2, true, false)
+	end
 
-		end)
-		end)
-
+	if crack2 and not crack3 then
+		Board:SetCracked(p3, true)
+	end
+	if crack3 and not crack2 then
+		Board:SetCracked(p2, true)
 	end
 end
 

@@ -41,15 +41,17 @@ function mod:init()
 	require(self.scriptPath.."/weapons/rift_inducer")
 
 	--Options
+	--[[
 	modApi:addGenerationOption("option_rift_area",
 		"Rift Inducer's second area",
-		[[Second area can be lines from the first point, squares around it or "diamond-shaped" (manhattan distance).]],
+		"Second area can be lines from the first point, squares around it or diamond-shaped (manhattan distance).",
 		{	--1: lines, 2: squares, 3: manhattan
 			values = {1, 2, 3},
 			value = 3,
 			strings = { "Lines", "Squares", "Manhattan" }
 		}
 	)
+	]]
 
 	modApi:addGenerationOption("option_grid_shield",
 		"Grid Shield",
