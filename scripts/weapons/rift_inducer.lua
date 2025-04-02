@@ -240,21 +240,6 @@ function truelch_RiftInducer:GetSecondTargetArea(p1, p2)
 	return ret
 end
 
---Exclude p2 and p3
---Take points that are actually valid (no mountains, lava, water, ice, etc.)
-local function GetValidTempSpawnPoint(p2, p3)
-	for j = 0, 7 do
-		for i = 0, 7 do
-			local curr = Point(i, j)
-			if curr ~= p2 and curr ~= p3 and Board:IsBlocked(curr, PATH_PROJECTILE) and Board:GetTerrain(curr) == TERRAIN_ROAD then
-				return curr
-			end
-		end
-	end
-	LOG("GetValidTempSpawnPoint: couldn't find a fitting temporary space!")
-	return Point(-1, -1)
-end
-
 function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
 	--local ret = self:GetSkillEffect(p1, p2)
 	local ret = SkillEffect() --we want to ditch previous stuff, they were just for preview
@@ -277,6 +262,27 @@ function truelch_RiftInducer:GetFinalEffect(p1, p2, p3)
 	return ret
 end
 
+local function findTempPoint(otherPoint)
+	for j = 0, 7 do
+		for i = 0, 7 do
+			local curr = Point(i, j)
+			if otherPoint ~= curr
+					and not Board:IsBlocked(curr, PATH_PROJECTILE)
+	                and not Board:IsPod(curr)
+	                and not Board:IsTerrain(curr, TERRAIN_HOLE)
+	                and not Board:IsTerrain(curr, TERRAIN_WATER) --works with lava? and acid water?
+	                and not Board:IsTerrain(curr, TERRAIN_LAVA)
+	                and not Board:IsAcid(curr)
+	                and not Board:IsFire(curr) then
+                return curr
+            end
+		end
+	end
+
+	LOG("Couldn't find a temporary point! Not an issue unless you target a Grid Mech lol")
+	return Point(-1, -1)
+end
+
 local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
 	if type(weaponId) == 'table' then weaponId = weaponId.__Id end
 
@@ -287,12 +293,31 @@ local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
 	local pawn2 = Board:GetPawn(p2)
 	local pawn3 = Board:GetPawn(p3)
 
+	--this doesn't fix the issue with swapping the Grid Mech *sigh*
+	local tmp2 = findTempPoint(p2) --just to pass a point
+	local tmp3 = findTempPoint(tmp2)
+
+	--If I use SetSpace instead of AddTeleport:
+	-- - GridMech teleport will crash the game (for the second teleport)
+	-- - Enemies will either cancel their attack (when moved in (-1, -1))
+	--   or will try to continue to attack the same tile
+	--   which can either cancel their attack or just not move their relative attack pos with the relative move
+	--   (scarab will attack the same tile even after being teleported one tile behind for example)
+
 	if pawn2 ~= nil then
-		pawn2:SetSpace(Point(-1, -1))
+		--pawn2:SetSpace(Point(-1, -1))
+		--pawn2:SetSpace(tmp2)
+		local tpEffect = SkillEffect()
+		tpEffect:AddTeleport(p2, tmp2, NO_DELAY)
+		Board:AddEffect(tpEffect)
 	end
 
 	if pawn3 ~= nil then
-		pawn3:SetSpace(Point(-1, -1))
+		--pawn3:SetSpace(Point(-1, -1))
+		--pawn3:SetSpace(tmp3)
+		local tpEffect = SkillEffect()
+		tpEffect:AddTeleport(p3, tmp3, NO_DELAY)
+		Board:AddEffect(tpEffect)
 	end
 
 	---- SPAWN SWAP ----
@@ -424,11 +449,17 @@ local function EVENT_onFinalEffectEnd(mission, pawn, weaponId, p1, p2, p3)
 
 	---- NEW: RELOCATE UNITS ----
 	if pawn2 ~= nil then
-		pawn2:SetSpace(p3)
+		--pawn2:SetSpace(p3)
+		local tpEffect = SkillEffect()
+		tpEffect:AddTeleport(tmp2, p3, NO_DELAY)
+		Board:AddEffect(tpEffect)
 	end
 
 	if pawn3 ~= nil then
-		pawn3:SetSpace(p2)
+		--pawn3:SetSpace(p2)
+		local tpEffect = SkillEffect()
+		tpEffect:AddTeleport(tmp3, p2, NO_DELAY)
+		Board:AddEffect(tpEffect)
 	end
 
 	---- ADD STATUS (ACID, SHIELD, FIRE, SMOKE, ...) ----

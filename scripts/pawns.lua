@@ -233,7 +233,7 @@ truelch_GridMech = Pawn:new{
 
 --Taken from Generic's Leaper (and changed to an event because why not)
 local function EVENT_onPawnGrappled(mission, pawn, isGrappled)
-	--LOG("EVENT_onPawnGrappled")
+	LOG("EVENT_onPawnGrappled")
 	if isGrappled and pawn:GetType() == "truelch_GridMech" then --If we're grappled and it's our truelch_GridMech
 		--If removing the web right away it looks really weird (try it if you want). So we'll wait about half a second with this
 
@@ -586,6 +586,7 @@ truelch_DislocationMech = Pawn:new{
 	ImageOffset = palette,
 	SkillList = { "truelch_RiftInducer" },
 	--SkillList = { "truelch_RiftInducer", "Ranged_Artillerymech" },
+	--SkillList = { "truelch_RiftInducer", "Science_TC_SwapOther" },
 	--SkillList = { "truelch_RiftInducer", "truelch_test_weapon" },
 	SoundLocation = "/mech/distance/artillery/",
 	DefaultTeam = TEAM_PLAYER,
